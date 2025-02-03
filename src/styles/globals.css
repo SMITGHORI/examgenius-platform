@@ -1,0 +1,109 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&family=Sora:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-inter: 'Inter', sans-serif;
+    --font-sora: 'Sora', sans-serif;
+
+    /* Clean black and white color scheme */
+    --primary: 0 0% 0%; /* Pure Black */
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 0 0% 15%; /* Dark Gray */
+    --secondary-foreground: 0 0% 100%;
+    
+    --accent: 0 0% 95%; /* Light Gray */
+    --accent-foreground: 0 0% 0%;
+    
+    --background: 0 0% 100%; /* White */
+    --foreground: 0 0% 0%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+    
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    
+    --destructive: 0 0% 0%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 0 0% 0%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 0 0% 0%;
+    --warning-foreground: 0 0% 100%;
+
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    font-family: var(--font-inter);
+    @apply bg-background text-foreground antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-sora);
+  }
+}
+
+/* Custom gradient backgrounds */
+.gradient-primary {
+  @apply bg-gradient-to-r from-[#000] to-[#000];
+}
+
+.gradient-secondary {
+  @apply bg-gradient-to-r from-[#333] to-[#333];
+}
+
+.gradient-accent {
+  @apply bg-gradient-to-r from-[#ccc] to-[#ccc];
+}
+
+/* Glass effect */
+.glass {
+  @apply bg-white/80 backdrop-blur-md border border-white/20;
+}
+
+/* Custom animations */
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-accent rounded-full;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-black/20 rounded-full hover:bg-black/30 transition-colors;
+}
+
+/* Card hover effects */
+.card-hover {
+  @apply transition-all duration-300 hover:shadow-lg hover:shadow-black/5 hover:-translate-y-1;
+}
