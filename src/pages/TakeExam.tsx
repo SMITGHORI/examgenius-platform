@@ -35,9 +35,10 @@ const TakeExam = () => {
         if (questionError) throw questionError;
 
         setExamData(exam);
-        const transformedQuestions: ExamQuestion[] = questionData.map((q: Question) => ({
+        const transformedQuestions: ExamQuestion[] = questionData.map((q) => ({
           ...q,
-          userAnswer: undefined
+          userAnswer: undefined,
+          options: Array.isArray(q.options) ? q.options : []
         }));
         setQuestions(transformedQuestions);
         setTimeLeft(exam.duration * 60);

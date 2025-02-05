@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -20,7 +21,6 @@ const GenerateQuestions = ({ examData, pdfId, onQuestionsGenerated }: Props) => 
     setProgress(0);
 
     try {
-      // Get PDF content
       const { data: pdf, error: pdfError } = await supabase
         .from("pdfs")
         .select("storage_path")
@@ -29,7 +29,6 @@ const GenerateQuestions = ({ examData, pdfId, onQuestionsGenerated }: Props) => 
 
       if (pdfError) throw pdfError;
 
-      // Simulate question generation with progress updates
       const totalSteps = 5;
       const questions: Question[] = [];
 
@@ -37,11 +36,10 @@ const GenerateQuestions = ({ examData, pdfId, onQuestionsGenerated }: Props) => 
         await new Promise((resolve) => setTimeout(resolve, 1000));
         setProgress((i / totalSteps) * 100);
 
-        // Add sample questions (replace with real question generation)
         for (let j = 1; j <= 4; j++) {
           questions.push({
             id: `q${i}_${j}`,
-            exam_id: examData.id || '',
+            exam_id: examData.id || "",
             question_text: `Sample question ${i}.${j} from the PDF content`,
             options: [
               "Sample option 1",
@@ -52,12 +50,11 @@ const GenerateQuestions = ({ examData, pdfId, onQuestionsGenerated }: Props) => 
             correct_answer: "0",
             marks: 5,
             created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
           });
         }
       }
 
-      // Save questions to database
       const { error: saveError } = await supabase.from("questions").insert(
         questions.map((q) => ({
           exam_id: examData.id,
@@ -116,11 +113,11 @@ const GenerateQuestions = ({ examData, pdfId, onQuestionsGenerated }: Props) => 
             </div>
             <div className="space-y-2">
               <h3 className="font-medium text-gray-700">Total Marks</h3>
-              <p className="text-gray-900">{examData.totalMarks}</p>
+              <p className="text-gray-900">{examData.total_marks}</p>
             </div>
             <div className="space-y-2">
               <h3 className="font-medium text-gray-700">Negative Marks</h3>
-              <p className="text-gray-900">{examData.negativeMarks}</p>
+              <p className="text-gray-900">{examData.negative_marks}</p>
             </div>
             <div className="space-y-2">
               <h3 className="font-medium text-gray-700">Difficulty</h3>

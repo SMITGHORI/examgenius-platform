@@ -1,5 +1,6 @@
+
 import { Button } from "@/components/ui/button";
-import type { ExamData } from "./ExamWizard";
+import type { ExamData } from "@/lib/types";
 
 interface Props {
   examData: ExamData;
@@ -17,7 +18,6 @@ const ExamPreview = ({ examData, onStartExam }: Props) => {
       </div>
 
       <div className="bg-white rounded-2xl shadow-xl p-8">
-        {/* Exam Details */}
         <div className="space-y-8">
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-2">
@@ -34,11 +34,11 @@ const ExamPreview = ({ examData, onStartExam }: Props) => {
             </div>
             <div className="space-y-2">
               <h3 className="font-medium text-gray-700">Total Marks</h3>
-              <p className="text-gray-900">{examData.totalMarks}</p>
+              <p className="text-gray-900">{examData.total_marks}</p>
             </div>
             <div className="space-y-2">
               <h3 className="font-medium text-gray-700">Negative Marks</h3>
-              <p className="text-gray-900">{examData.negativeMarks}</p>
+              <p className="text-gray-900">{examData.negative_marks}</p>
             </div>
             <div className="space-y-2">
               <h3 className="font-medium text-gray-700">Difficulty</h3>
@@ -46,7 +46,6 @@ const ExamPreview = ({ examData, onStartExam }: Props) => {
             </div>
           </div>
 
-          {/* Questions Preview */}
           <div className="space-y-6">
             <h3 className="text-xl font-semibold text-gray-900">Questions</h3>
             <div className="space-y-6">
@@ -63,13 +62,13 @@ const ExamPreview = ({ examData, onStartExam }: Props) => {
                       {question.marks} marks
                     </span>
                   </div>
-                  <p className="text-gray-800">{question.text}</p>
+                  <p className="text-gray-800">{question.question_text}</p>
                   <div className="grid grid-cols-2 gap-4">
                     {question.options.map((option, optIndex) => (
                       <div
                         key={optIndex}
                         className={`p-4 rounded-lg border ${
-                          optIndex === question.correctAnswer
+                          optIndex.toString() === question.correct_answer
                             ? "border-green-200 bg-green-50"
                             : "border-gray-200"
                         }`}
@@ -77,7 +76,7 @@ const ExamPreview = ({ examData, onStartExam }: Props) => {
                         <div className="flex items-center space-x-3">
                           <span
                             className={`w-6 h-6 rounded-full flex items-center justify-center text-sm ${
-                              optIndex === question.correctAnswer
+                              optIndex.toString() === question.correct_answer
                                 ? "bg-green-100 text-green-700"
                                 : "bg-gray-100 text-gray-600"
                             }`}
@@ -86,7 +85,7 @@ const ExamPreview = ({ examData, onStartExam }: Props) => {
                           </span>
                           <span
                             className={
-                              optIndex === question.correctAnswer
+                              optIndex.toString() === question.correct_answer
                                 ? "text-green-700"
                                 : "text-gray-700"
                             }
@@ -102,7 +101,6 @@ const ExamPreview = ({ examData, onStartExam }: Props) => {
             </div>
           </div>
 
-          {/* Start Button */}
           <div className="pt-6">
             <Button
               onClick={onStartExam}
