@@ -1,4 +1,3 @@
-
 // Auth Types
 export interface User {
   id: string;
@@ -21,7 +20,7 @@ export interface Exam {
   subject?: string;
   created_at: string;
   updated_at: string;
-  attempts_count?: number;
+  attempts_count?: number | null;
 }
 
 export interface Question {
@@ -31,8 +30,8 @@ export interface Question {
   options: string[];
   correct_answer: string;
   marks: number;
-  explanation?: string;
-  page_number?: number;
+  explanation?: string | null;
+  page_number?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -47,7 +46,7 @@ export interface ExamData {
   pdf_id?: string;
   negative_marks?: number;
   difficulty?: 'easy' | 'medium' | 'hard';
-  questions?: Question[];
+  questions?: ExamQuestion[];
 }
 
 export interface ExamQuestion extends Question {

@@ -10,17 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Eye, FileText, Timer, Users } from "lucide-react";
-
-interface Exam {
-  id: string;
-  title: string;
-  subject: string;
-  duration: number;
-  total_marks: number;
-  created_at: string;
-  status: string;
-  attempts_count?: number;
-}
+import type { Exam } from "@/lib/types";
 
 const MyExams = () => {
   const [exams, setExams] = useState<Exam[]>([]);
@@ -42,7 +32,14 @@ const MyExams = () => {
           .order("created_at", { ascending: false });
 
         if (error) throw error;
-        setExams(data || []);
+
+        // Transform the data to match the Exam type
+        const transformedExams: Exam[] = (data || []).map(exam => ({
+          ...exam,
+          attempts_count: typeof exam.attempts_count === 'number' ? exam.attempts_count : 0
+        }));
+
+        setExams(transformedExams);
       } catch (error) {
         console.error("Error fetching exams:", error);
       } finally {
