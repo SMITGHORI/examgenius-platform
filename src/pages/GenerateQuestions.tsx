@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import type { ExamData, Question } from "./ExamWizard";
+import type { ExamData, Question } from "@/lib/types";
 
 interface Props {
   examData: ExamData;
@@ -34,7 +34,6 @@ const GenerateQuestions = ({ examData, pdfId, onQuestionsGenerated }: Props) => 
       const questions: Question[] = [];
 
       for (let i = 1; i <= totalSteps; i++) {
-        // In a real implementation, you would process the PDF content here
         await new Promise((resolve) => setTimeout(resolve, 1000));
         setProgress((i / totalSteps) * 100);
 
@@ -42,15 +41,18 @@ const GenerateQuestions = ({ examData, pdfId, onQuestionsGenerated }: Props) => 
         for (let j = 1; j <= 4; j++) {
           questions.push({
             id: `q${i}_${j}`,
-            text: `Sample question ${i}.${j} from the PDF content`,
+            exam_id: examData.id || '',
+            question_text: `Sample question ${i}.${j} from the PDF content`,
             options: [
               "Sample option 1",
               "Sample option 2",
               "Sample option 3",
               "Sample option 4",
             ],
-            correctAnswer: Math.floor(Math.random() * 4),
+            correct_answer: "0",
             marks: 5,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           });
         }
       }
@@ -59,9 +61,9 @@ const GenerateQuestions = ({ examData, pdfId, onQuestionsGenerated }: Props) => 
       const { error: saveError } = await supabase.from("questions").insert(
         questions.map((q) => ({
           exam_id: examData.id,
-          text: q.text,
+          question_text: q.question_text,
           options: q.options,
-          correct_answer: q.correctAnswer,
+          correct_answer: q.correct_answer,
           marks: q.marks,
         }))
       );

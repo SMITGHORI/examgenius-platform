@@ -20,6 +20,7 @@ export interface Exam {
   subject?: string;
   created_at: string;
   updated_at: string;
+  attempts_count?: number;
 }
 
 export interface Question {
@@ -52,18 +53,6 @@ export interface Submission {
     title: string;
     total_marks: number;
   };
-}
-
-// PDF Types
-export interface PDF {
-  id: string;
-  title: string;
-  file_name: string;
-  storage_path: string;
-  size: number;
-  uploaded_by: string;
-  created_at: string;
-  updated_at: string;
 }
 
 // Component Props Types

@@ -39,7 +39,20 @@ const TakeExam = () => {
         if (questionError) throw questionError;
 
         setExamData(exam);
-        setQuestions(questionData);
+        // Transform database questions to ExamQuestion type
+        const transformedQuestions: ExamQuestion[] = questionData.map(q => ({
+          id: q.id,
+          exam_id: q.exam_id,
+          question_text: q.question_text,
+          options: q.options,
+          correct_answer: q.correct_answer,
+          marks: q.marks,
+          explanation: q.explanation,
+          page_number: q.page_number,
+          created_at: q.created_at,
+          updated_at: q.updated_at
+        }));
+        setQuestions(transformedQuestions);
         setTimeLeft(exam.duration * 60); // Convert minutes to seconds
       } catch (error: any) {
         console.error("Error loading exam:", error);
@@ -206,7 +219,7 @@ const TakeExam = () => {
               </div>
 
               <p className="text-gray-800 text-lg">
-                {questions[currentQuestion].text}
+                {questions[currentQuestion].question_text}
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
