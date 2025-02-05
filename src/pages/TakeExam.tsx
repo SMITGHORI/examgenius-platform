@@ -93,25 +93,32 @@ const TakeExam = () => {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
       const answers = questions.map((q) => ({
         question_id: q.id,
         selected_option: q.userAnswer,
-        is_correct: q.userAnswer === q.correctAnswer,
+        is_correct: q.userAnswer === parseInt(q.correct_answer),
         marks_obtained:
-          q.userAnswer === q.correctAnswer
+          q.userAnswer === parseInt(q.correct_answer)
             ? q.marks
             : q.userAnswer !== undefined
             ? -examData.negative_marks
             : 0,
       }));
 
-      const { error } = await supabase.from("exam_responses").insert({
-        exam_id: examId,
-        user_id: (await supabase.auth.getUser()).data.user?.id,
-        responses: answers,
-        total_marks: answers.reduce((sum, a) => sum + a.marks_obtained, 0),
-        submitted_at: new Date().toISOString(),
-      });
+      const totalScore = answers.reduce((sum, a) => sum + a.marks_obtained, 0);
+
+      const { error } = await supabase
+        .from('exam_submissions')
+        .insert({
+          exam_id: examId,
+          user_id: user.id,
+          responses: answers,
+          score: totalScore,
+          submitted_at: new Date().toISOString(),
+        });
 
       if (error) throw error;
 
@@ -120,7 +127,7 @@ const TakeExam = () => {
       console.error("Error submitting exam:", error);
       toast({
         title: "Error",
-        description: "Failed to submit exam",
+        description: error.message || "Failed to submit exam",
         variant: "destructive",
       });
     } finally {

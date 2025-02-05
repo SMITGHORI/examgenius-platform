@@ -11,15 +11,12 @@ export interface User {
 export interface Exam {
   id: string;
   title: string;
-  subject: string;
+  description: string;
   duration: number;
   total_marks: number;
-  negative_marks: number;
-  difficulty: 'easy' | 'medium' | 'hard';
-  created_by: string;
   pdf_id: string;
+  created_by: string;
   status: 'draft' | 'published';
-  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -27,23 +24,30 @@ export interface Exam {
 export interface Question {
   id: string;
   exam_id: string;
-  text: string;
+  question_text: string;
   options: string[];
-  correct_answer: number;
+  correct_answer: string;
   marks: number;
+  explanation?: string;
+  page_number?: number;
   created_at: string;
   updated_at: string;
 }
 
-export interface ExamResponse {
+export interface ExamQuestion extends Question {
+  userAnswer?: number;
+}
+
+export interface Submission {
   id: string;
   exam_id: string;
   user_id: string;
-  responses: { [key: string]: number };
-  total_marks: number;
+  score: number;
   submitted_at: string;
-  created_at: string;
-  updated_at: string;
+  exam: {
+    title: string;
+    total_marks: number;
+  };
 }
 
 // PDF Types
@@ -59,18 +63,33 @@ export interface PDF {
 }
 
 // Component Props Types
-export interface LayoutProps {
-  children: React.ReactNode;
+export interface CreateExamProps {
+  onConfigComplete: (data: ExamData) => void;
+  pdfId: string;
 }
 
-export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'default' | 'outline' | 'ghost';
-  size?: 'sm' | 'md' | 'lg';
-  loading?: boolean;
-  children: React.ReactNode;
+export interface PDFUploadProps {
+  onUploadComplete: (uploadedPdfId: string) => void;
 }
 
-export interface CardProps {
-  className?: string;
-  children: React.ReactNode;
+export interface ExamData {
+  id?: string;
+  title: string;
+  description?: string;
+  duration: number;
+  totalMarks: number;
+  questions?: Question[];
 }
+
+// Route Constants
+export const ROUTES = {
+  HOME: "/",
+  SIGNIN: "/signin",
+  SIGNUP: "/signup",
+  CREATE_EXAM: "/create",
+  TAKE_EXAM: "/take-exam",
+  MY_EXAMS: "/my-exams",
+  PROFILE: "/profile",
+  RESULTS: "/results",
+  UPLOAD_PDF: "/upload-pdf"
+} as const;

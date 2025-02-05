@@ -14,6 +14,7 @@ import {
 interface Submission {
   id: string;
   exam_id: string;
+  user_id: string;
   score: number;
   submitted_at: string;
   exam: {
@@ -33,7 +34,7 @@ const Results = () => {
         const { data: user } = await supabase.auth.getUser();
         
         const { data, error } = await supabase
-          .from('submissions')
+          .from('exam_submissions')
           .select(`
             *,
             exam:exams (
@@ -46,7 +47,7 @@ const Results = () => {
 
         if (error) throw error;
 
-        setSubmissions(data);
+        setSubmissions(data || []);
       } catch (error) {
         toast({
           title: "Error",
