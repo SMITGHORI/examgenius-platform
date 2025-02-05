@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,6 +37,7 @@ const MyExams = () => {
         // Transform the data to match the Exam type
         const transformedExams: Exam[] = (data || []).map(exam => ({
           ...exam,
+          status: exam.status as 'draft' | 'published', // Cast the status to our union type
           attempts_count: typeof exam.attempts_count === 'number' ? exam.attempts_count : 0
         }));
 
