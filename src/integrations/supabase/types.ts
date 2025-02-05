@@ -9,6 +9,47 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      exam_submissions: {
+        Row: {
+          created_at: string | null
+          exam_id: string
+          id: string
+          responses: Json
+          score: number
+          submitted_at: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          exam_id: string
+          id?: string
+          responses?: Json
+          score: number
+          submitted_at?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          exam_id?: string
+          id?: string
+          responses?: Json
+          score?: number
+          submitted_at?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_submissions_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exams: {
         Row: {
           created_at: string
@@ -18,6 +59,7 @@ export type Database = {
           id: string
           pdf_id: string | null
           status: string
+          subject: string | null
           title: string
           total_marks: number
           updated_at: string
@@ -30,6 +72,7 @@ export type Database = {
           id?: string
           pdf_id?: string | null
           status?: string
+          subject?: string | null
           title: string
           total_marks: number
           updated_at?: string
@@ -42,6 +85,7 @@ export type Database = {
           id?: string
           pdf_id?: string | null
           status?: string
+          subject?: string | null
           title?: string
           total_marks?: number
           updated_at?: string
@@ -340,7 +384,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      format_date: {
+        Args: {
+          date_value: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       difficulty_level: "easy" | "medium" | "hard"

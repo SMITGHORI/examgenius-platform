@@ -11,12 +11,13 @@ export interface User {
 export interface Exam {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   duration: number;
   total_marks: number;
-  pdf_id: string;
+  pdf_id?: string;
   created_by: string;
   status: 'draft' | 'published';
+  subject?: string;
   created_at: string;
   updated_at: string;
 }
@@ -35,7 +36,7 @@ export interface Question {
 }
 
 export interface ExamQuestion extends Question {
-  userAnswer?: number;
+  userAnswer?: string;
 }
 
 export interface Submission {
@@ -43,8 +44,11 @@ export interface Submission {
   exam_id: string;
   user_id: string;
   score: number;
+  responses: any[];
   submitted_at: string;
-  exam: {
+  created_at: string;
+  updated_at: string;
+  exam?: {
     title: string;
     total_marks: number;
   };
@@ -78,8 +82,18 @@ export interface ExamData {
   description?: string;
   duration: number;
   totalMarks: number;
+  subject?: string;
   questions?: Question[];
 }
+
+// Add formatDate utility function
+export const formatDate = (date: string): string => {
+  return new Date(date).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+};
 
 // Route Constants
 export const ROUTES = {
