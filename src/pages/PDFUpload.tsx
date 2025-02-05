@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -14,8 +15,9 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase/index";
 import { FileText, Loader2, Upload, X } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
+import type { PDFUploadProps } from "@/lib/types";
 
-export default function PDFUpload() {
+export default function PDFUpload({ onUploadComplete }: PDFUploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -155,16 +157,8 @@ export default function PDFUpload() {
           description: "Your PDF has been uploaded and is being processed",
         });
 
-        // Navigate to create exam with the correct PDF ID
-        navigate(ROUTES.CREATE_EXAM, {
-          state: {
-            pdfUrl: publicUrl,
-            pdfId: pdfUpload.id, // This should be a UUID from the pdf_uploads table
-            fileName: file.name,
-            pdfUpload: pdfUpload // Pass the entire record for debugging
-          },
-          replace: true
-        });
+        // Call the onUploadComplete callback with the PDF ID
+        onUploadComplete(pdfUpload.id);
 
         return true;
 
