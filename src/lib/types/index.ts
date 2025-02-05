@@ -1,4 +1,3 @@
-
 // Auth Types
 export interface User {
   id: string;
@@ -84,3 +83,12 @@ export const ROUTES = {
   RESULTS: "/results",
   UPLOAD_PDF: "/upload-pdf"
 } as const;
+
+export interface FileInputProps {
+  onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}
+
+export interface FilePreviewProps {
+  file: File;
+  onRemove: () => void;
+}
