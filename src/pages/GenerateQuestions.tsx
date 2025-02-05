@@ -3,6 +3,15 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Loader2 } from "lucide-react";
 import type { ExamData, Question } from "@/lib/types";
 
 interface Props {
@@ -13,65 +22,46 @@ interface Props {
 
 const GenerateQuestions = ({ examData, pdfId, onQuestionsGenerated }: Props) => {
   const [isGenerating, setIsGenerating] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const [generatedQuestions, setGeneratedQuestions] = useState<Question[]>([]);
   const { toast } = useToast();
 
   const generateQuestions = async () => {
     setIsGenerating(true);
-    setProgress(0);
-
     try {
-      const { data: pdf, error: pdfError } = await supabase
-        .from("pdfs")
-        .select("storage_path")
-        .eq("id", pdfId)
-        .single();
+      const { data, error } = await supabase.functions.invoke('generate-exam-questions', {
+        body: { pdfId }
+      });
 
-      if (pdfError) throw pdfError;
+      if (error) throw error;
 
-      const totalSteps = 5;
-      const questions: Question[] = [];
+      const questions: Question[] = data.questions.map((q: any, index: number) => ({
+        id: `q_${index}`,
+        exam_id: examData.id || "",
+        ...q,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }));
 
-      for (let i = 1; i <= totalSteps; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        setProgress((i / totalSteps) * 100);
-
-        for (let j = 1; j <= 4; j++) {
-          questions.push({
-            id: `q${i}_${j}`,
-            exam_id: examData.id || "",
-            question_text: `Sample question ${i}.${j} from the PDF content`,
-            options: [
-              "Sample option 1",
-              "Sample option 2",
-              "Sample option 3",
-              "Sample option 4",
-            ],
-            correct_answer: "0",
-            marks: 5,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          });
-        }
-      }
-
-      const { error: saveError } = await supabase.from("questions").insert(
-        questions.map((q) => ({
-          exam_id: examData.id,
-          question_text: q.question_text,
-          options: q.options,
-          correct_answer: q.correct_answer,
-          marks: q.marks,
-        }))
-      );
-
-      if (saveError) throw saveError;
-
+      setGeneratedQuestions(questions);
       toast({
         title: "Success",
         description: "Questions generated successfully!",
       });
 
+      // Save questions to database
+      const { error: saveError } = await supabase.from("questions").insert(
+        questions.map(q => ({
+          exam_id: examData.id,
+          question_text: q.question_text,
+          options: q.options,
+          correct_answer: q.correct_answer,
+          marks: q.marks,
+          explanation: q.explanation,
+          page_number: q.page_number
+        }))
+      );
+
+      if (saveError) throw saveError;
       onQuestionsGenerated(questions);
     } catch (error: any) {
       console.error("Error generating questions:", error);
@@ -96,8 +86,12 @@ const GenerateQuestions = ({ examData, pdfId, onQuestionsGenerated }: Props) => 
         </p>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-xl p-8">
-        <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Exam Configuration</CardTitle>
+          <CardDescription>Review your exam settings before generating questions</CardDescription>
+        </CardHeader>
+        <CardContent>
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-2">
               <h3 className="font-medium text-gray-700">Exam Title</h3>
@@ -115,46 +109,89 @@ const GenerateQuestions = ({ examData, pdfId, onQuestionsGenerated }: Props) => 
               <h3 className="font-medium text-gray-700">Total Marks</h3>
               <p className="text-gray-900">{examData.total_marks}</p>
             </div>
-            <div className="space-y-2">
-              <h3 className="font-medium text-gray-700">Negative Marks</h3>
-              <p className="text-gray-900">{examData.negative_marks}</p>
-            </div>
-            <div className="space-y-2">
-              <h3 className="font-medium text-gray-700">Difficulty</h3>
-              <p className="text-gray-900 capitalize">{examData.difficulty}</p>
-            </div>
           </div>
+        </CardContent>
+      </Card>
 
-          {isGenerating && (
-            <div className="space-y-4">
-              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 transition-all duration-300"
-                  style={{ width: `${progress}%` }}
-                />
+      {generatedQuestions.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Generated Questions</CardTitle>
+            <CardDescription>Review the generated questions before proceeding</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[500px] pr-4">
+              <div className="space-y-6">
+                {generatedQuestions.map((question, index) => (
+                  <Card key={question.id} className="border border-gray-200">
+                    <CardContent className="pt-6">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-lg font-semibold">
+                            Question {index + 1}
+                          </h3>
+                          <span className="text-sm text-gray-500">
+                            {question.marks} marks
+                          </span>
+                        </div>
+                        <p className="text-gray-800">{question.question_text}</p>
+                        <div className="grid gap-2">
+                          {question.options.map((option, optIndex) => (
+                            <div
+                              key={optIndex}
+                              className={`p-4 rounded-lg ${
+                                optIndex.toString() === question.correct_answer
+                                  ? "bg-green-50 border-green-200"
+                                  : "bg-gray-50 border-gray-200"
+                              } border`}
+                            >
+                              <div className="flex items-center space-x-3">
+                                <span
+                                  className={`w-6 h-6 flex items-center justify-center rounded-full text-sm ${
+                                    optIndex.toString() === question.correct_answer
+                                      ? "bg-green-100 text-green-700"
+                                      : "bg-gray-200 text-gray-600"
+                                  }`}
+                                >
+                                  {String.fromCharCode(65 + optIndex)}
+                                </span>
+                                <span>{option}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {question.explanation && (
+                          <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                            <p className="text-sm text-blue-700">
+                              <span className="font-semibold">Explanation: </span>
+                              {question.explanation}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
-              <p className="text-center text-sm text-gray-600">
-                Generating questions... {Math.round(progress)}%
-              </p>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      ) : (
+        <Button
+          onClick={generateQuestions}
+          disabled={isGenerating}
+          className="w-full h-12 text-lg font-medium bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-lg transition-all duration-200"
+        >
+          {isGenerating ? (
+            <div className="flex items-center space-x-2">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span>Generating Questions...</span>
             </div>
+          ) : (
+            "Generate Questions"
           )}
-
-          <Button
-            onClick={generateQuestions}
-            disabled={isGenerating}
-            className="w-full h-12 text-lg font-medium bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-lg transition-all duration-200"
-          >
-            {isGenerating ? (
-              <div className="flex items-center space-x-2">
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Generating Questions...</span>
-              </div>
-            ) : (
-              "Generate Questions"
-            )}
-          </Button>
-        </div>
-      </div>
+        </Button>
+      )}
     </div>
   );
 };
