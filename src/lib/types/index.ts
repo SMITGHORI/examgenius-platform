@@ -1,3 +1,4 @@
+
 // Auth Types
 export interface User {
   id: string;
@@ -36,6 +37,19 @@ export interface Question {
   updated_at: string;
 }
 
+export interface ExamData {
+  id?: string;
+  title: string;
+  description?: string;
+  duration: number;
+  total_marks: number;
+  subject?: string;
+  pdf_id?: string;
+  negative_marks?: number;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  questions?: Question[];
+}
+
 export interface ExamQuestion extends Question {
   userAnswer?: string;
 }
@@ -63,16 +77,6 @@ export interface CreateExamProps {
 
 export interface PDFUploadProps {
   onUploadComplete: (uploadedPdfId: string) => void;
-}
-
-export interface ExamData {
-  id?: string;
-  title: string;
-  description?: string;
-  duration: number;
-  totalMarks: number;
-  subject?: string;
-  questions?: Question[];
 }
 
 // Add formatDate utility function

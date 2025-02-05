@@ -3,11 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import type { Question } from "./ExamWizard";
-
-interface ExamQuestion extends Question {
-  userAnswer?: number;
-}
+import type { ExamQuestion, Question } from "@/lib/types";
 
 const TakeExam = () => {
   const { examId } = useParams();
@@ -39,21 +35,12 @@ const TakeExam = () => {
         if (questionError) throw questionError;
 
         setExamData(exam);
-        // Transform database questions to ExamQuestion type
-        const transformedQuestions: ExamQuestion[] = questionData.map(q => ({
-          id: q.id,
-          exam_id: q.exam_id,
-          question_text: q.question_text,
-          options: q.options,
-          correct_answer: q.correct_answer,
-          marks: q.marks,
-          explanation: q.explanation,
-          page_number: q.page_number,
-          created_at: q.created_at,
-          updated_at: q.updated_at
+        const transformedQuestions: ExamQuestion[] = questionData.map((q: Question) => ({
+          ...q,
+          userAnswer: undefined
         }));
         setQuestions(transformedQuestions);
-        setTimeLeft(exam.duration * 60); // Convert minutes to seconds
+        setTimeLeft(exam.duration * 60);
       } catch (error: any) {
         console.error("Error loading exam:", error);
         toast({
@@ -98,7 +85,7 @@ const TakeExam = () => {
   const handleAnswer = (questionIndex: number, answerIndex: number) => {
     setQuestions((prev) =>
       prev.map((q, i) =>
-        i === questionIndex ? { ...q, userAnswer: answerIndex } : q
+        i === questionIndex ? { ...q, userAnswer: answerIndex.toString() } : q
       )
     );
   };
@@ -112,13 +99,8 @@ const TakeExam = () => {
       const answers = questions.map((q) => ({
         question_id: q.id,
         selected_option: q.userAnswer,
-        is_correct: q.userAnswer === parseInt(q.correct_answer),
-        marks_obtained:
-          q.userAnswer === parseInt(q.correct_answer)
-            ? q.marks
-            : q.userAnswer !== undefined
-            ? -examData.negative_marks
-            : 0,
+        is_correct: q.userAnswer === q.correct_answer,
+        marks_obtained: q.userAnswer === q.correct_answer ? q.marks : 0
       }));
 
       const totalScore = answers.reduce((sum, a) => sum + a.marks_obtained, 0);
@@ -207,93 +189,92 @@ const TakeExam = () => {
 
         {/* Question */}
         {questions[currentQuestion] && (
-          <div className="bg-white rounded-2xl shadow-xl p-8">
-            <div className="space-y-6">
-              <div className="flex justify-between items-start">
-                <h2 className="text-xl font-semibold text-gray-900">
-                  Question {currentQuestion + 1}
-                </h2>
-                <span className="text-sm text-gray-600">
-                  {questions[currentQuestion].marks} marks
-                </span>
-              </div>
+        <div className="bg-white rounded-2xl shadow-xl p-8">
+          <div className="space-y-6">
+            <div className="flex justify-between items-start">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Question {currentQuestion + 1}
+              </h2>
+              <span className="text-sm text-gray-600">
+                {questions[currentQuestion].marks} marks
+              </span>
+            </div>
 
-              <p className="text-gray-800 text-lg">
-                {questions[currentQuestion].question_text}
-              </p>
+            <p className="text-gray-800 text-lg">
+              {questions[currentQuestion].question_text}
+            </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {questions[currentQuestion].options.map((option, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleAnswer(currentQuestion, index)}
-                    className={`p-4 rounded-lg border text-left transition-all duration-200 ${
-                      questions[currentQuestion].userAnswer === index
-                        ? "border-purple-400 bg-purple-50"
-                        : "border-gray-200 hover:border-purple-200 hover:bg-purple-50"
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <span
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
-                          questions[currentQuestion].userAnswer === index
-                            ? "bg-purple-100 text-purple-700"
-                            : "bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        {String.fromCharCode(65 + index)}
-                      </span>
-                      <span
-                        className={
-                          questions[currentQuestion].userAnswer === index
-                            ? "text-purple-700"
-                            : "text-gray-700"
-                        }
-                      >
-                        {option}
-                      </span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex justify-between pt-6">
-                <Button
-                  onClick={() =>
-                    setCurrentQuestion((prev) =>
-                      prev > 0 ? prev - 1 : questions.length - 1
-                    )
-                  }
-                  variant="outline"
-                  className="w-32"
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {questions[currentQuestion].options.map((option, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleAnswer(currentQuestion, index)}
+                  className={`p-4 rounded-lg border text-left transition-all duration-200 ${
+                    questions[currentQuestion].userAnswer === index.toString()
+                      ? "border-purple-400 bg-purple-50"
+                      : "border-gray-200 hover:border-purple-200 hover:bg-purple-50"
+                  }`}
                 >
-                  Previous
-                </Button>
+                  <div className="flex items-center space-x-3">
+                    <span
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
+                        questions[currentQuestion].userAnswer === index.toString()
+                          ? "bg-purple-100 text-purple-700"
+                          : "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      {String.fromCharCode(65 + index)}
+                    </span>
+                    <span
+                      className={
+                        questions[currentQuestion].userAnswer === index.toString()
+                          ? "text-purple-700"
+                          : "text-gray-700"
+                      }
+                    >
+                      {option}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
 
-                <Button
-                  onClick={handleSubmit}
-                  disabled={isSubmitting}
-                  className="w-32 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                >
-                  {isSubmitting ? "Submitting..." : "Submit"}
-                </Button>
+            <div className="flex justify-between pt-6">
+              <Button
+                onClick={() =>
+                  setCurrentQuestion((prev) =>
+                    prev > 0 ? prev - 1 : questions.length - 1
+                  )
+                }
+                variant="outline"
+                className="w-32"
+              >
+                Previous
+              </Button>
 
-                <Button
-                  onClick={() =>
-                    setCurrentQuestion((prev) =>
-                      prev < questions.length - 1 ? prev + 1 : 0
-                    )
-                  }
-                  variant="outline"
-                  className="w-32"
-                >
-                  Next
-                </Button>
-              </div>
+              <Button
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="w-32 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+              >
+                {isSubmitting ? "Submitting..." : "Submit"}
+              </Button>
+
+              <Button
+                onClick={() =>
+                  setCurrentQuestion((prev) =>
+                    prev < questions.length - 1 ? prev + 1 : 0
+                  )
+                }
+                variant="outline"
+                className="w-32"
+              >
+                Next
+              </Button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
