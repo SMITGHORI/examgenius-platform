@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { supabase, testDatabaseConnection } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 
 interface LocationState {
   pdfId: string;
@@ -29,7 +29,6 @@ export default function CreateExam() {
   const state = location.state as LocationState;
 
   useEffect(() => {
-    // Validate location state
     if (!state?.pdfId) {
       console.error("No PDF ID in state:", state);
       toast({
@@ -37,24 +36,11 @@ export default function CreateExam() {
         description: "No PDF selected. Please upload a PDF first.",
         variant: "destructive"
       });
-      navigate(-1);
+      navigate("/upload");
       return;
     }
 
     console.log("CreateExam state:", state);
-
-    const checkConnection = async () => {
-      const result = await testDatabaseConnection();
-      if (!result.success) {
-        toast({
-          title: "Database Connection Error",
-          description: result.error,
-          variant: "destructive",
-          duration: 5000
-        });
-      }
-    };
-    checkConnection();
   }, [state, navigate, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,52 +48,23 @@ export default function CreateExam() {
     setLoading(true);
 
     try {
-      console.log("Creating exam with PDF ID:", state.pdfId);
-      console.log("Full state:", state);
-
-      // Test connection first
-      const { success, error: connectionError } = await testDatabaseConnection();
-      if (!success) {
-        throw new Error(`Database connection failed: ${connectionError}`);
-      }
-
       // Get the current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError) throw userError;
       if (!user) throw new Error("User not authenticated");
 
-      // Verify PDF exists
-      const { data: pdf, error: pdfError } = await supabase
-        .from("pdf_uploads")
-        .select("id")
-        .eq("id", state.pdfId)
-        .single();
-
-      if (pdfError) {
-        console.error("PDF verification error:", pdfError);
-        throw new Error(`PDF not found: ${pdfError.message}`);
-      }
-
-      if (!pdf) {
-        throw new Error("PDF not found in database");
-      }
-
       // Create the exam
-      const examData = {
-        title: formData.title,
-        description: formData.description,
-        duration: formData.duration,
-        total_marks: formData.totalMarks,
-        pdf_id: state.pdfId,
-        created_by: user.id,
-        status: "draft"
-      };
-
-      console.log("Submitting exam data:", examData);
-
       const { data: exam, error: examError } = await supabase
         .from("exams")
-        .insert(examData)
+        .insert({
+          title: formData.title,
+          description: formData.description,
+          duration: formData.duration,
+          total_marks: formData.totalMarks,
+          pdf_id: state.pdfId,
+          created_by: user.id,
+          status: "draft"
+        })
         .select()
         .single();
 
@@ -127,19 +84,17 @@ export default function CreateExam() {
         description: "Exam created successfully"
       });
 
-      // Navigate to the next step
-      navigate(`/exam/${exam.id}/edit`, { replace: true });
-
-    } catch (error: any) {
-      console.error("Detailed error:", {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint,
-        name: error.name,
-        stack: error.stack
+      // Navigate to the exam wizard with the created exam
+      navigate(`/exam/${exam.id}/edit`, {
+        state: {
+          examId: exam.id,
+          pdfId: state.pdfId,
+          pdfUrl: state.pdfUrl
+        }
       });
 
+    } catch (error: any) {
+      console.error("Error creating exam:", error);
       toast({
         title: "Failed to create exam",
         description: error.message || "An unexpected error occurred",
