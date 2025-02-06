@@ -6,7 +6,7 @@ export const validatePDFFile = (file: File, toast: (props: ToastProps) => void):
   if (file.type !== "application/pdf") {
     toast({
       title: "Invalid file type",
-      description: "Please upload a PDF file",
+      children: "Please upload a PDF file",
       variant: "destructive",
     });
     return false;
@@ -14,7 +14,7 @@ export const validatePDFFile = (file: File, toast: (props: ToastProps) => void):
   if (file.size > 10 * 1024 * 1024) {
     toast({
       title: "File too large",
-      description: "Maximum file size is 10MB",
+      children: "Maximum file size is 10MB",
       variant: "destructive",
     });
     return false;
@@ -30,7 +30,7 @@ export const handlePDFUpload = async (
   if (!user) {
     toast({
       title: "Authentication required",
-      description: "Please sign in to upload PDFs",
+      children: "Please sign in to upload PDFs",
       variant: "destructive",
     });
     return null;
@@ -68,7 +68,7 @@ export const handlePDFUpload = async (
   if (pdfError || !pdfUpload) {
     toast({
       title: "Upload error",
-      description: pdfError?.message || "Failed to get PDF record",
+      children: pdfError?.message || "Failed to get PDF record",
       variant: "destructive",
     });
     return null;
@@ -76,7 +76,7 @@ export const handlePDFUpload = async (
 
   toast({
     title: "Upload successful",
-    description: "Your PDF has been uploaded and is being processed",
+    children: "Your PDF has been uploaded and is being processed",
   });
 
   return pdfUpload.id;
@@ -86,19 +86,19 @@ const handleUploadError = (error: Error, toast: (props: ToastProps) => void) => 
   if (error.message.includes("Bucket not found")) {
     toast({
       title: "Storage not configured",
-      description: "Please create a 'pdfs' bucket in your Supabase project",
+      children: "Please create a 'pdfs' bucket in your Supabase project",
       variant: "destructive",
     });
   } else if (error.message.includes("row-level security")) {
     toast({
       title: "Permission error",
-      description: "You don't have permission to upload files. Please check your authentication.",
+      children: "You don't have permission to upload files. Please check your authentication.",
       variant: "destructive",
     });
   } else {
     toast({
       title: "Upload failed",
-      description: error.message,
+      children: error.message,
       variant: "destructive",
     });
   }
