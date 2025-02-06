@@ -1,3 +1,4 @@
+
 export const APP_NAME = 'ExamGenius';
 
 export const ROUTES = {
@@ -9,6 +10,7 @@ export const ROUTES = {
   TAKE_EXAM: '/take-exam',
   PROFILE: '/profile',
   RESULTS: '/results',
+  UPLOAD_PDF: '/upload-pdf'
 } as const;
 
 export const DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
@@ -37,3 +39,4 @@ export const STORAGE_KEYS = {
   AUTH_TOKEN: 'auth_token',
   USER: 'user',
 } as const;
+
