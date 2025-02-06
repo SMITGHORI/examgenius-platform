@@ -1,8 +1,8 @@
 
 import { supabase } from "@/lib/supabase/index";
-import type { Toast } from "@/components/ui/use-toast";
+import type { ToastProps } from "@/components/ui/toast";
 
-export const validatePDFFile = (file: File, toast: (props: Toast) => void): boolean => {
+export const validatePDFFile = (file: File, toast: (props: ToastProps) => void): boolean => {
   if (file.type !== "application/pdf") {
     toast({
       title: "Invalid file type",
@@ -24,7 +24,7 @@ export const validatePDFFile = (file: File, toast: (props: Toast) => void): bool
 
 export const handlePDFUpload = async (
   file: File,
-  toast: (props: Toast) => void
+  toast: (props: ToastProps) => void
 ): Promise<string | null> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -82,7 +82,7 @@ export const handlePDFUpload = async (
   return pdfUpload.id;
 };
 
-const handleUploadError = (error: Error, toast: (props: Toast) => void) => {
+const handleUploadError = (error: Error, toast: (props: ToastProps) => void) => {
   if (error.message.includes("Bucket not found")) {
     toast({
       title: "Storage not configured",
