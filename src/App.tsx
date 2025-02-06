@@ -26,7 +26,7 @@ const PDFUploadWrapper = () => {
 
   const handleUploadComplete = (pdfId: string) => {
     console.log("Upload complete, navigating with pdfId:", pdfId);
-    navigate(ROUTES.CREATE_EXAM, {
+    navigate(`/exam/${pdfId}/edit`, {
       state: {
         pdfId,
       },
@@ -60,6 +60,16 @@ const App = () => (
             />
             <Route
               path={ROUTES.CREATE_EXAM}
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <ExamWizard />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/exam/:id/edit"
               element={
                 <ProtectedRoute>
                   <MainLayout>

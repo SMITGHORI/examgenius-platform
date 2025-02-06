@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
-import { ROUTES } from "@/lib/constants";
 import type { PDFUploadProps } from "@/lib/types";
 import { FileInput } from "@/components/pdf-upload/FileInput";
 import { FilePreview } from "@/components/pdf-upload/FilePreview";
@@ -45,14 +44,13 @@ export default function PDFUpload({ onUploadComplete }: PDFUploadProps) {
       while (retryCount < maxRetries) {
         const pdfId = await handlePDFUpload(file, toast);
         if (pdfId) {
-          console.log("PDF uploaded successfully, navigating to create exam with pdfId:", pdfId);
-          navigate(ROUTES.CREATE_EXAM, {
-            state: {
-              pdfId,
-            },
-          });
+          console.log("PDF uploaded successfully, navigating to edit exam with pdfId:", pdfId);
           if (onUploadComplete) {
             onUploadComplete(pdfId);
+          } else {
+            navigate(`/exam/${pdfId}/edit`, {
+              state: { pdfId },
+            });
           }
           break;
         }
