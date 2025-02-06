@@ -48,7 +48,9 @@ export default function PDFUpload({ onUploadComplete }: PDFUploadProps) {
           if (onUploadComplete) {
             onUploadComplete(pdfId);
           } else {
-            navigate(`/exam/${pdfId}/edit`, {
+            const path = `/exam/${pdfId}/edit`;
+            console.log("Navigating to:", path);
+            navigate(path, {
               state: { 
                 pdfId,
                 fromUpload: true

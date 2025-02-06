@@ -60,7 +60,7 @@ const App = () => (
               }
             />
             <Route
-              path={`/exam/:id/edit`}
+              path="/exam/:id/edit"
               element={
                 <ProtectedRoute>
                   <MainLayout>

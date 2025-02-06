@@ -23,18 +23,23 @@ const ExamWizard = () => {
   const [pdfId, setPdfId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check if we have a pdfId from the URL params or location state
     const state = location.state as LocationState;
-    console.log("ExamWizard state:", state);
+    console.log("ExamWizard mounted");
+    console.log("Location state:", state);
     console.log("URL param id:", id);
+    console.log("Current step:", currentStep);
 
     if (id || state?.pdfId) {
-      setPdfId(id || state?.pdfId);
-      if (state?.fromUpload) {
+      const newPdfId = id || state?.pdfId;
+      console.log("Setting PDF ID to:", newPdfId);
+      setPdfId(newPdfId);
+      
+      if (state?.fromUpload || (id && currentStep === "upload")) {
+        console.log("Moving to configure step");
         setCurrentStep("configure");
       }
     }
-  }, [location, id]);
+  }, [location, id, currentStep]);
 
   const handlePDFUpload = (uploadedPdfId: string) => {
     console.log("PDF Upload complete in ExamWizard:", uploadedPdfId);
