@@ -44,12 +44,15 @@ export default function PDFUpload({ onUploadComplete }: PDFUploadProps) {
       while (retryCount < maxRetries) {
         const pdfId = await handlePDFUpload(file, toast);
         if (pdfId) {
-          console.log("PDF uploaded successfully, navigating to edit exam with pdfId:", pdfId);
+          console.log("PDF uploaded successfully with ID:", pdfId);
           if (onUploadComplete) {
             onUploadComplete(pdfId);
           } else {
             navigate(`/exam/${pdfId}/edit`, {
-              state: { pdfId },
+              state: { 
+                pdfId,
+                fromUpload: true
+              },
             });
           }
           break;

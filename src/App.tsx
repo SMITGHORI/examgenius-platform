@@ -25,10 +25,11 @@ const PDFUploadWrapper = () => {
   const navigate = useNavigate();
 
   const handleUploadComplete = (pdfId: string) => {
-    console.log("Upload complete, navigating with pdfId:", pdfId);
+    console.log("Upload complete, navigating to:", `/exam/${pdfId}/edit`);
     navigate(`/exam/${pdfId}/edit`, {
       state: {
         pdfId,
+        fromUpload: true
       },
     });
   };
@@ -59,7 +60,7 @@ const App = () => (
               }
             />
             <Route
-              path={ROUTES.CREATE_EXAM}
+              path={`/exam/:id/edit`}
               element={
                 <ProtectedRoute>
                   <MainLayout>
@@ -69,7 +70,7 @@ const App = () => (
               }
             />
             <Route
-              path="/exam/:id/edit"
+              path={ROUTES.CREATE_EXAM}
               element={
                 <ProtectedRoute>
                   <MainLayout>

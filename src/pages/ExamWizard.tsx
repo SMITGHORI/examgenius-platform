@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import PDFUpload from "./PDFUpload";
 import CreateExam from "./CreateExam";
 import GenerateQuestions from "./GenerateQuestions";
@@ -9,49 +10,46 @@ import type { ExamData, Question } from "@/lib/types";
 type WizardStep = "upload" | "configure" | "generate" | "preview" | "start";
 
 interface LocationState {
-  pdfUrl: string;
   pdfId: string;
-  fileName: string;
+  fromUpload?: boolean;
 }
 
 const ExamWizard = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { id } = useParams();
   const [currentStep, setCurrentStep] = useState<WizardStep>("upload");
   const [examData, setExamData] = useState<ExamData | null>(null);
   const [pdfId, setPdfId] = useState<string | null>(null);
-  const [pdfData, setPdfData] = useState<LocationState | null>(null);
 
   useEffect(() => {
-    // Check if we have PDF data in the location state
+    // Check if we have a pdfId from the URL params or location state
     const state = location.state as LocationState;
-    console.log("Location state:", state);
+    console.log("ExamWizard state:", state);
+    console.log("URL param id:", id);
 
-    if (state?.pdfUrl) {
-      setPdfData(state);
-      setCurrentStep("configure");
+    if (id || state?.pdfId) {
+      setPdfId(id || state?.pdfId);
+      if (state?.fromUpload) {
+        setCurrentStep("configure");
+      }
     }
-  }, [location]);
-
-  const steps = [
-    { id: "upload", title: "Upload PDF", description: "Upload your exam PDF" },
-    { id: "configure", title: "Configure Exam", description: "Set exam parameters" },
-    { id: "generate", title: "Generate Questions", description: "Create questions from PDF" },
-    { id: "preview", title: "Preview Exam", description: "Review and finalize" },
-    { id: "start", title: "Start Exam", description: "Begin the exam" },
-  ];
+  }, [location, id]);
 
   const handlePDFUpload = (uploadedPdfId: string) => {
+    console.log("PDF Upload complete in ExamWizard:", uploadedPdfId);
     setPdfId(uploadedPdfId);
     setCurrentStep("configure");
   };
 
   const handleExamConfig = (data: ExamData) => {
+    console.log("Exam configuration complete:", data);
     setExamData(data);
     setCurrentStep("generate");
   };
 
   const handleQuestionsGenerated = (questions: Question[]) => {
+    console.log("Questions generated:", questions);
     setExamData((prev) => prev ? { ...prev, questions } : null);
     setCurrentStep("preview");
   };
@@ -68,27 +66,65 @@ const ExamWizard = () => {
       <div className="w-full bg-white shadow-md">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
-            {steps.map((step, index) => (
+            {[
+              { id: "upload", title: "Upload PDF", description: "Upload your exam PDF" },
+              { id: "configure", title: "Configure Exam", description: "Set exam parameters" },
+              { id: "generate", title: "Generate Questions", description: "Create questions from PDF" },
+              { id: "preview", title: "Preview Exam", description: "Review and finalize" },
+              { id: "start", title: "Start Exam", description: "Begin the exam" },
+            ].map((step, index) => (
               <div
                 key={step.id}
                 className={`flex flex-col items-center relative ${
-                  index < steps.findIndex((s) => s.id === currentStep)
+                  index < [
+                    "upload",
+                    "configure",
+                    "generate",
+                    "preview",
+                    "start",
+                  ].indexOf(currentStep)
                     ? "text-green-600"
-                    : index === steps.findIndex((s) => s.id === currentStep)
+                    : index ===
+                      [
+                        "upload",
+                        "configure",
+                        "generate",
+                        "preview",
+                        "start",
+                      ].indexOf(currentStep)
                     ? "text-purple-600"
                     : "text-gray-400"
                 }`}
               >
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 ${
-                    index < steps.findIndex((s) => s.id === currentStep)
+                    index < [
+                      "upload",
+                      "configure",
+                      "generate",
+                      "preview",
+                      "start",
+                    ].indexOf(currentStep)
                       ? "bg-green-100"
-                      : index === steps.findIndex((s) => s.id === currentStep)
+                      : index ===
+                        [
+                          "upload",
+                          "configure",
+                          "generate",
+                          "preview",
+                          "start",
+                        ].indexOf(currentStep)
                       ? "bg-purple-100"
                       : "bg-gray-100"
                   }`}
                 >
-                  {index < steps.findIndex((s) => s.id === currentStep) ? (
+                  {index < [
+                    "upload",
+                    "configure",
+                    "generate",
+                    "preview",
+                    "start",
+                  ].indexOf(currentStep) ? (
                     <svg
                       className="w-5 h-5"
                       fill="currentColor"
@@ -106,10 +142,16 @@ const ExamWizard = () => {
                 </div>
                 <div className="text-sm font-medium">{step.title}</div>
                 <div className="text-xs">{step.description}</div>
-                {index < steps.length - 1 && (
+                {index < 4 && (
                   <div
                     className={`absolute top-4 left-full w-full h-0.5 -ml-4 ${
-                      index < steps.findIndex((s) => s.id === currentStep)
+                      index < [
+                        "upload",
+                        "configure",
+                        "generate",
+                        "preview",
+                        "start",
+                      ].indexOf(currentStep)
                         ? "bg-green-200"
                         : "bg-gray-200"
                     }`}
@@ -130,7 +172,7 @@ const ExamWizard = () => {
         {currentStep === "generate" && examData && (
           <GenerateQuestions
             examData={examData}
-            pdfId={pdfData?.pdfId || ""}
+            pdfId={pdfId || ""}
             onQuestionsGenerated={handleQuestionsGenerated}
           />
         )}
