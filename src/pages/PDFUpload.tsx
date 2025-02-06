@@ -45,7 +45,15 @@ export default function PDFUpload({ onUploadComplete }: PDFUploadProps) {
       while (retryCount < maxRetries) {
         const pdfId = await handlePDFUpload(file, toast);
         if (pdfId) {
-          onUploadComplete(pdfId);
+          console.log("PDF uploaded successfully, navigating to create exam with pdfId:", pdfId);
+          navigate(ROUTES.CREATE_EXAM, {
+            state: {
+              pdfId,
+            },
+          });
+          if (onUploadComplete) {
+            onUploadComplete(pdfId);
+          }
           break;
         }
         
@@ -55,29 +63,12 @@ export default function PDFUpload({ onUploadComplete }: PDFUploadProps) {
         }
       }
     } catch (error: any) {
-      if (error.message?.includes("navigation")) {
-        toast({
-          title: "Navigation error",
-          description: (
-            <div className="flex flex-col gap-2">
-              <p>Click the button below to continue to exam creation</p>
-              <Button
-                onClick={() => window.location.href = ROUTES.CREATE_EXAM}
-                className="bg-black text-white hover:bg-black/90"
-              >
-                Continue to Create Exam
-              </Button>
-            </div>
-          ),
-          duration: 10000,
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: error.message || "An unexpected error occurred",
-          variant: "destructive",
-        });
-      }
+      console.error("Upload error:", error);
+      toast({
+        title: "Error",
+        children: error.message || "An unexpected error occurred",
+        variant: "destructive",
+      });
     } finally {
       setUploading(false);
       setProcessing(false);

@@ -25,11 +25,11 @@ const PDFUploadWrapper = () => {
   const navigate = useNavigate();
 
   const handleUploadComplete = (pdfId: string) => {
+    console.log("Upload complete, navigating with pdfId:", pdfId);
     navigate(ROUTES.CREATE_EXAM, {
       state: {
         pdfId,
       },
-      replace: true
     });
   };
 
@@ -44,12 +44,12 @@ const App = () => (
         <Sonner />
         <Router>
           <Routes>
-            <Route path="/signin" element={<SignIn />} />
-            <Route path="/signup" element={<SignUp />} />
+            <Route path={ROUTES.SIGN_IN} element={<SignIn />} />
+            <Route path={ROUTES.SIGN_UP} element={<SignUp />} />
             
             {/* Protected Routes with MainLayout */}
             <Route
-              path="/"
+              path={ROUTES.HOME}
               element={
                 <ProtectedRoute>
                   <MainLayout>
@@ -59,7 +59,7 @@ const App = () => (
               }
             />
             <Route
-              path="/create"
+              path={ROUTES.CREATE_EXAM}
               element={
                 <ProtectedRoute>
                   <MainLayout>
@@ -69,7 +69,7 @@ const App = () => (
               }
             />
             <Route
-              path="/upload-pdf"
+              path={ROUTES.UPLOAD_PDF}
               element={
                 <ProtectedRoute>
                   <MainLayout>
@@ -79,7 +79,7 @@ const App = () => (
               }
             />
             <Route
-              path="/my-exams"
+              path={ROUTES.MY_EXAMS}
               element={
                 <ProtectedRoute>
                   <MainLayout>
@@ -89,7 +89,7 @@ const App = () => (
               }
             />
             <Route
-              path="/take-exam"
+              path={ROUTES.TAKE_EXAM}
               element={
                 <ProtectedRoute>
                   <MainLayout>
@@ -99,7 +99,7 @@ const App = () => (
               }
             />
             <Route
-              path="/profile"
+              path={ROUTES.PROFILE}
               element={
                 <ProtectedRoute>
                   <MainLayout>
@@ -109,7 +109,7 @@ const App = () => (
               }
             />
             <Route
-              path="/results/:examId"
+              path={`${ROUTES.RESULTS}/:examId`}
               element={
                 <ProtectedRoute>
                   <MainLayout>
