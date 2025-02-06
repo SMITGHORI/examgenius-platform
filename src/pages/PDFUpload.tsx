@@ -16,6 +16,7 @@ import { FileInput } from "@/components/pdf-upload/FileInput";
 import { FilePreview } from "@/components/pdf-upload/FilePreview";
 import { HowItWorks } from "@/components/pdf-upload/HowItWorks";
 import { handlePDFUpload, validatePDFFile } from "@/utils/pdf-upload";
+import { supabase } from "@/lib/supabase";
 
 export default function PDFUpload({ onUploadComplete }: PDFUploadProps) {
   const [file, setFile] = useState<File | null>(null);
@@ -45,14 +46,28 @@ export default function PDFUpload({ onUploadComplete }: PDFUploadProps) {
         const pdfId = await handlePDFUpload(file, toast);
         if (pdfId) {
           console.log("PDF uploaded successfully with ID:", pdfId);
+          
+          // Start PDF processing
+          setProcessing(true);
+          const { data, error } = await supabase.functions.invoke('process-pdf', {
+            body: { pdfId }
+          });
+
+          if (error) {
+            throw error;
+          }
+
+          console.log("PDF processing result:", data);
+
           if (onUploadComplete) {
             onUploadComplete(pdfId);
           } else {
-            const path = `/exam/${pdfId}/edit`;
+            const path = `/exam/${data.examId}/edit`;
             console.log("Navigating to:", path);
             navigate(path, {
               state: { 
                 pdfId,
+                examId: data.examId,
                 fromUpload: true
               },
             });
@@ -66,10 +81,10 @@ export default function PDFUpload({ onUploadComplete }: PDFUploadProps) {
         }
       }
     } catch (error: any) {
-      console.error("Upload error:", error);
+      console.error("Upload/processing error:", error);
       toast({
         title: "Error",
-        children: error.message || "An unexpected error occurred",
+        description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
     } finally {
@@ -81,16 +96,16 @@ export default function PDFUpload({ onUploadComplete }: PDFUploadProps) {
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       <div>
-        <h1 className="text-3xl font-bold">Upload PDF</h1>
+        <h1 className="text-3xl font-bold text-foreground">Upload PDF</h1>
         <p className="text-muted-foreground mt-2">
           Upload a PDF file to automatically generate exam questions
         </p>
       </div>
 
-      <Card className="border-2 border-black/10">
+      <Card className="border-2 border-border">
         <CardHeader>
-          <CardTitle>PDF Upload</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-foreground">PDF Upload</CardTitle>
+          <CardDescription className="text-muted-foreground">
             Select a PDF file to upload. Maximum file size is 10MB.
           </CardDescription>
         </CardHeader>
@@ -105,7 +120,7 @@ export default function PDFUpload({ onUploadComplete }: PDFUploadProps) {
             <div className="flex justify-end space-x-4">
               <Button
                 variant="outline"
-                className="border-2 border-black hover:bg-black/5"
+                className="border-2 border-border hover:bg-muted"
                 onClick={() => navigate(-1)}
               >
                 Cancel
@@ -113,7 +128,7 @@ export default function PDFUpload({ onUploadComplete }: PDFUploadProps) {
               <Button
                 onClick={handleUpload}
                 disabled={!file || uploading || processing}
-                className="bg-black text-white hover:bg-black/90"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 {(uploading || processing) && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -121,7 +136,7 @@ export default function PDFUpload({ onUploadComplete }: PDFUploadProps) {
                 {uploading
                   ? "Uploading..."
                   : processing
-                  ? "Processing..."
+                  ? "Processing PDF..."
                   : "Upload and Process"}
               </Button>
             </div>

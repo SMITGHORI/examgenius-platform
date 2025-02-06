@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 import { Configuration, OpenAIApi } from "https://esm.sh/openai@3.1.0"
@@ -24,32 +25,72 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Get PDF content from database
-    const { data: pdf, error: pdfError } = await supabase
-      .from('pdfs')
+    // Update PDF status to processing
+    await supabase
+      .from('pdf_uploads')
+      .update({ processing_status: 'processing' })
+      .eq('id', pdfId)
+
+    // Get PDF content from storage
+    const { data: pdfData, error: pdfError } = await supabase
+      .from('pdf_uploads')
       .select('*')
       .eq('id', pdfId)
       .single()
 
-    if (pdfError || !pdf) {
+    if (pdfError || !pdfData) {
       throw new Error('PDF not found')
     }
+
+    const { data: fileData } = await supabase.storage
+      .from('pdfs')
+      .download(pdfData.storage_path)
+
+    if (!fileData) {
+      throw new Error('PDF file not found in storage')
+    }
+
+    const text = await fileData.text()
+    console.log('PDF content length:', text.length)
 
     const configuration = new Configuration({
       apiKey: Deno.env.get('OPENAI_API_KEY'),
     })
     const openai = new OpenAIApi(configuration)
 
-    // Create exam first in 'draft' status
+    // Generate questions using GPT-4
+    const prompt = `Analyze this PDF content and generate 5 multiple choice questions. The questions should be challenging but fair. Format each question as a JSON object with the following structure:
+    {
+      "question_text": "The question text here",
+      "options": ["A) First option", "B) Second option", "C) Third option", "D) Fourth option"],
+      "correct_answer": "A",
+      "explanation": "Explanation of why this is the correct answer",
+      "marks": 2
+    }
+
+    Content: ${text.substring(0, 8000)} // Limit content length for API
+    `
+
+    const completion = await openai.createChatCompletion({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "You are a professional exam question generator. Create clear, concise, and challenging questions." },
+        { role: "user", content: prompt }
+      ],
+    })
+
+    const generatedQuestions = JSON.parse(completion.data.choices[0].message?.content || '[]')
+
+    // Create exam with generated questions
     const { data: exam, error: examError } = await supabase
       .from('exams')
       .insert({
-        title: `${pdf.title} - Generated Exam`,
-        subject: pdf.subject,
-        total_marks: 50, // Default value
-        duration: 30,
-        difficulty: 'medium',
-        created_by: pdf.uploaded_by,
+        title: `${pdfData.title} - Generated Exam`,
+        description: 'Generated from PDF analysis',
+        duration: 30, // Default duration
+        total_marks: generatedQuestions.reduce((acc: number, q: any) => acc + q.marks, 0),
+        pdf_id: pdfId,
+        created_by: pdfData.uploaded_by,
         status: 'draft'
       })
       .select()
@@ -59,31 +100,11 @@ serve(async (req) => {
       throw examError
     }
 
-    // Generate questions using GPT-4
-    const prompt = `Based on the following PDF content, generate 5 multiple choice questions with explanations. Format the response as a JSON array with the following structure for each question:
-    {
-      "question_text": "...",
-      "options": ["A) ...", "B) ...", "C) ...", "D) ..."],
-      "correct_answer": "A",
-      "explanation": "...",
-      "marks": 2
-    }
-    
-    PDF Content:
-    ${pdf.content || 'Sample content for testing'}`
-
-    const completion = await openai.createChatCompletion({
-      model: "gpt-4",
-      messages: [{ role: "user", content: prompt }],
-    })
-
-    const questions = JSON.parse(completion.data.choices[0].message?.content || '[]')
-
     // Insert generated questions
     const { error: questionsError } = await supabase
       .from('questions')
       .insert(
-        questions.map((q: any) => ({
+        generatedQuestions.map((q: any) => ({
           exam_id: exam.id,
           question_text: q.question_text,
           options: q.options,
@@ -97,24 +118,20 @@ serve(async (req) => {
       throw questionsError
     }
 
-    // Update exam status to active and set start time
-    const { error: updateError } = await supabase
-      .from('exams')
-      .update({ 
-        status: 'active',
-        start_time: new Date().toISOString(),
-        total_marks: questions.length * 2
+    // Update PDF status to completed
+    await supabase
+      .from('pdf_uploads')
+      .update({
+        processing_status: 'completed',
+        content: text
       })
-      .eq('id', exam.id)
-
-    if (updateError) {
-      throw updateError
-    }
+      .eq('id', pdfId)
 
     return new Response(
       JSON.stringify({ 
-        message: 'Exam created successfully',
-        examId: exam.id
+        message: 'PDF processed successfully',
+        examId: exam.id,
+        questionCount: generatedQuestions.length
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     )

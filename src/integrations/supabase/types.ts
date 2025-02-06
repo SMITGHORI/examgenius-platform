@@ -102,34 +102,43 @@ export type Database = {
       }
       pdf_uploads: {
         Row: {
+          content: string | null
           created_at: string
           file_name: string
           id: string
+          processing_status: string | null
           size: number
           status: string
           storage_path: string
+          subject: string | null
           title: string
           updated_at: string
           uploaded_by: string
         }
         Insert: {
+          content?: string | null
           created_at?: string
           file_name: string
           id?: string
+          processing_status?: string | null
           size: number
           status?: string
           storage_path: string
+          subject?: string | null
           title: string
           updated_at?: string
           uploaded_by: string
         }
         Update: {
+          content?: string | null
           created_at?: string
           file_name?: string
           id?: string
+          processing_status?: string | null
           size?: number
           status?: string
           storage_path?: string
+          subject?: string | null
           title?: string
           updated_at?: string
           uploaded_by?: string
