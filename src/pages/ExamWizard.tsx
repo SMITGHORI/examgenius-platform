@@ -11,6 +11,7 @@ type WizardStep = "upload" | "configure" | "generate" | "preview" | "start";
 
 interface LocationState {
   pdfId: string;
+  examId?: string;
   fromUpload?: boolean;
 }
 
@@ -24,37 +25,37 @@ const ExamWizard = () => {
 
   useEffect(() => {
     const state = location.state as LocationState;
-    console.log("ExamWizard mounted");
-    console.log("Location state:", state);
-    console.log("URL param id:", id);
-    console.log("Current step:", currentStep);
+    console.log("[ExamWizard] Component mounted");
+    console.log("[ExamWizard] Location state:", state);
+    console.log("[ExamWizard] URL param id:", id);
+    console.log("[ExamWizard] Current step:", currentStep);
 
     if (id || state?.pdfId) {
       const newPdfId = id || state?.pdfId;
-      console.log("Setting PDF ID to:", newPdfId);
+      console.log("[ExamWizard] Setting PDF ID to:", newPdfId);
       setPdfId(newPdfId);
       
       if (state?.fromUpload || (id && currentStep === "upload")) {
-        console.log("Moving to configure step");
+        console.log("[ExamWizard] Moving to configure step");
         setCurrentStep("configure");
       }
     }
   }, [location, id, currentStep]);
 
   const handlePDFUpload = (uploadedPdfId: string) => {
-    console.log("PDF Upload complete in ExamWizard:", uploadedPdfId);
+    console.log("[ExamWizard] PDF Upload complete:", uploadedPdfId);
     setPdfId(uploadedPdfId);
     setCurrentStep("configure");
   };
 
   const handleExamConfig = (data: ExamData) => {
-    console.log("Exam configuration complete:", data);
+    console.log("[ExamWizard] Exam configuration complete:", data);
     setExamData(data);
     setCurrentStep("generate");
   };
 
   const handleQuestionsGenerated = (questions: Question[]) => {
-    console.log("Questions generated:", questions);
+    console.log("[ExamWizard] Questions generated:", questions);
     setExamData((prev) => prev ? { ...prev, questions } : null);
     setCurrentStep("preview");
   };

@@ -44,26 +44,36 @@ export default function PDFUpload({ onUploadComplete }: PDFUploadProps) {
     try {
       while (retryCount < maxRetries) {
         const pdfId = await handlePDFUpload(file, toast);
+        console.log("[PDFUpload] PDF upload complete, pdfId:", pdfId);
+        
         if (pdfId) {
-          console.log("PDF uploaded successfully with ID:", pdfId);
-          
           // Start PDF processing
           setProcessing(true);
+          console.log("[PDFUpload] Starting PDF processing for pdfId:", pdfId);
+          
           const { data, error } = await supabase.functions.invoke('process-pdf', {
             body: { pdfId }
           });
 
           if (error) {
+            console.error("[PDFUpload] Processing error:", error);
             throw error;
           }
 
-          console.log("PDF processing result:", data);
+          console.log("[PDFUpload] Processing complete, result:", data);
 
           if (onUploadComplete) {
+            console.log("[PDFUpload] Calling onUploadComplete with pdfId:", pdfId);
             onUploadComplete(pdfId);
           } else {
             const path = `/exam/${data.examId}/edit`;
-            console.log("Navigating to:", path);
+            console.log("[PDFUpload] No onUploadComplete handler, navigating to:", path);
+            console.log("[PDFUpload] Navigation state:", {
+              pdfId,
+              examId: data.examId,
+              fromUpload: true
+            });
+            
             navigate(path, {
               state: { 
                 pdfId,
@@ -81,7 +91,7 @@ export default function PDFUpload({ onUploadComplete }: PDFUploadProps) {
         }
       }
     } catch (error: any) {
-      console.error("Upload/processing error:", error);
+      console.error("[PDFUpload] Error in handleUpload:", error);
       toast({
         title: "Error",
         description: error.message || "An unexpected error occurred",
