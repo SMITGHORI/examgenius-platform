@@ -1,6 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
+import { Configuration, OpenAIApi } from "https://esm.sh/openai@3.1.0"
 import "https://deno.land/x/xhr@0.1.0/mod.ts"
 
 const corsHeaders = {
@@ -14,7 +15,8 @@ serve(async (req) => {
   }
 
   try {
-    const { pdfId } = await req.json()
+    const { pdfId, examId, totalMarks } = await req.json()
+    console.log("[generate-exam-questions] Starting question generation for PDF:", pdfId)
     
     // Initialize Supabase client
     const supabaseClient = createClient(
@@ -25,40 +27,103 @@ serve(async (req) => {
     // Get PDF content
     const { data: pdf, error: pdfError } = await supabaseClient
       .from('pdf_uploads')
-      .select('*')
+      .select('content, title')
       .eq('id', pdfId)
       .single()
 
-    if (pdfError) {
-      throw new Error('PDF not found')
+    if (pdfError || !pdf?.content) {
+      console.error("[generate-exam-questions] Error fetching PDF:", pdfError)
+      throw new Error('PDF content not found')
     }
 
-    // For now, generate sample questions (in production, you'd use a real AI model)
-    const sampleQuestions = [
-      {
-        question_text: "What is the main topic discussed in the first chapter?",
-        options: ["Option A", "Option B", "Option C", "Option D"],
-        correct_answer: "0",
-        marks: 5,
-        explanation: "This question tests understanding of the main concept.",
-        page_number: 1
-      },
-      {
-        question_text: "Which of the following best describes the key finding?",
-        options: ["Finding 1", "Finding 2", "Finding 3", "Finding 4"],
-        correct_answer: "1",
-        marks: 5,
-        explanation: "This tests comprehension of research findings.",
-        page_number: 2
-      },
-      // Add more sample questions...
-    ]
+    console.log("[generate-exam-questions] PDF content retrieved, length:", pdf.content.length)
+
+    // Initialize OpenAI
+    const configuration = new Configuration({
+      apiKey: Deno.env.get('OPENAI_API_KEY'),
+    })
+    const openai = new OpenAIApi(configuration)
+
+    // Calculate number of questions based on total marks (assuming 5 marks per question)
+    const numberOfQuestions = Math.ceil(totalMarks / 5)
+
+    console.log("[generate-exam-questions] Generating", numberOfQuestions, "questions")
+
+    const prompt = `Based on the following text from ${pdf.title}, generate ${numberOfQuestions} multiple choice questions.
+Each question should:
+- Test understanding of key concepts
+- Have 4 options with one correct answer
+- Include a brief explanation for the correct answer
+- Be assigned 5 marks
+
+Format each question as a JSON object with these fields:
+- question_text: the question
+- options: array of 4 strings for answer choices
+- correct_answer: index of correct option (0-3)
+- explanation: brief explanation of correct answer
+- marks: 5
+
+Return an array of these question objects.
+
+Text content:
+${pdf.content.substring(0, 8000)} // Limit content length to avoid token limits
+
+Generate questions that test understanding of the main concepts from this text.`
+
+    const response = await openai.createChatCompletion({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: "You are an expert at creating educational assessments. Generate clear, accurate multiple choice questions based on the provided content."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.7,
+    })
+
+    if (!response.data.choices[0]?.message?.content) {
+      throw new Error('Failed to generate questions')
+    }
+
+    console.log("[generate-exam-questions] Successfully generated questions from AI")
+
+    // Parse the AI response into questions array
+    const generatedQuestions = JSON.parse(response.data.choices[0].message.content)
+
+    // Validate question format
+    const questions = generatedQuestions.map((q: any) => ({
+      question_text: q.question_text,
+      options: q.options,
+      correct_answer: q.correct_answer.toString(),
+      marks: q.marks || 5,
+      explanation: q.explanation,
+      exam_id: examId
+    }))
+
+    console.log("[generate-exam-questions] Formatted questions:", questions.length)
+
+    // Save questions to database
+    const { error: saveError } = await supabaseClient
+      .from('questions')
+      .insert(questions)
+
+    if (saveError) {
+      console.error("[generate-exam-questions] Error saving questions:", saveError)
+      throw new Error('Failed to save generated questions')
+    }
+
+    console.log("[generate-exam-questions] Successfully saved questions to database")
 
     return new Response(
-      JSON.stringify({ questions: sampleQuestions }),
+      JSON.stringify({ questions }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
+    console.error("[generate-exam-questions] Error:", error)
     return new Response(
       JSON.stringify({ error: error.message }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
