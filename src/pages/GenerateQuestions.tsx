@@ -27,28 +27,53 @@ const GenerateQuestions = ({ examData, pdfId, onQuestionsGenerated }: Props) => 
 
   const generateQuestions = async () => {
     setIsGenerating(true);
+    console.log("[GenerateQuestions] Starting question generation for PDF:", pdfId);
+    
     try {
+      // First check if we're authenticated
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("You must be logged in to generate questions");
+      }
+
+      console.log("[GenerateQuestions] Calling generate-exam-questions function");
       const { data, error } = await supabase.functions.invoke('generate-exam-questions', {
-        body: { pdfId }
+        body: { 
+          pdfId,
+          examId: examData.id,
+          totalMarks: examData.total_marks,
+          subject: examData.subject
+        }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("[GenerateQuestions] Function error:", error);
+        throw error;
+      }
+
+      if (!data?.questions || !Array.isArray(data.questions)) {
+        console.error("[GenerateQuestions] Invalid response format:", data);
+        throw new Error("Invalid response from question generation");
+      }
+
+      console.log("[GenerateQuestions] Questions generated successfully:", data.questions);
 
       const questions: Question[] = data.questions.map((q: any, index: number) => ({
         id: `q_${index}`,
-        exam_id: examData.id || "",
-        ...q,
+        exam_id: examData.id,
+        question_text: q.question_text,
+        options: q.options,
+        correct_answer: q.correct_answer,
+        marks: q.marks || Math.ceil(examData.total_marks / data.questions.length),
+        explanation: q.explanation || null,
+        page_number: q.page_number || null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }));
 
       setGeneratedQuestions(questions);
-      toast({
-        title: "Success",
-        description: "Questions generated successfully!",
-      });
-
-      // Save questions to database
+      
+      console.log("[GenerateQuestions] Saving questions to database");
       const { error: saveError } = await supabase.from("questions").insert(
         questions.map(q => ({
           exam_id: examData.id,
@@ -61,13 +86,22 @@ const GenerateQuestions = ({ examData, pdfId, onQuestionsGenerated }: Props) => 
         }))
       );
 
-      if (saveError) throw saveError;
+      if (saveError) {
+        console.error("[GenerateQuestions] Database save error:", saveError);
+        throw saveError;
+      }
+
+      toast({
+        title: "Success",
+        description: "Questions generated successfully!",
+      });
+
       onQuestionsGenerated(questions);
     } catch (error: any) {
-      console.error("Error generating questions:", error);
+      console.error("[GenerateQuestions] Error:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to generate questions",
+        description: error.message || "Failed to generate questions. Please try again.",
         variant: "destructive",
       });
     } finally {
