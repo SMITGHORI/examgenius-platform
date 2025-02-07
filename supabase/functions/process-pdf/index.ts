@@ -15,11 +15,13 @@ serve(async (req) => {
 
   try {
     const { pdfId } = await req.json()
+    console.log("[process-pdf] Processing PDF with ID:", pdfId)
     
     if (!pdfId) {
       throw new Error('PDF ID is required')
     }
 
+    // Initialize Supabase client
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -31,6 +33,8 @@ serve(async (req) => {
       .update({ processing_status: 'processing' })
       .eq('id', pdfId)
 
+    console.log("[process-pdf] Fetching PDF data...")
+    
     // Get PDF content from storage
     const { data: pdfData, error: pdfError } = await supabase
       .from('pdf_uploads')
@@ -39,6 +43,7 @@ serve(async (req) => {
       .single()
 
     if (pdfError || !pdfData) {
+      console.error("[process-pdf] Error fetching PDF:", pdfError)
       throw new Error('PDF not found')
     }
 
@@ -47,41 +52,60 @@ serve(async (req) => {
       .download(pdfData.storage_path)
 
     if (!fileData) {
+      console.error("[process-pdf] PDF file not found in storage")
       throw new Error('PDF file not found in storage')
     }
 
     const text = await fileData.text()
-    console.log('PDF content length:', text.length)
+    console.log('[process-pdf] Successfully extracted text, length:', text.length)
 
+    // Initialize OpenAI
     const configuration = new Configuration({
       apiKey: Deno.env.get('OPENAI_API_KEY'),
     })
     const openai = new OpenAIApi(configuration)
 
+    console.log('[process-pdf] Generating questions using OpenAI...')
+
     // Generate questions using GPT-4
-    const prompt = `Analyze this PDF content and generate 5 multiple choice questions. The questions should be challenging but fair. Format each question as a JSON object with the following structure:
+    const prompt = `Analyze this PDF content and generate 5 multiple choice questions. The questions should be challenging but fair, and directly related to the content of the PDF. Each question should test understanding of key concepts from the text.
+
+    Format each question as a JSON object with this structure:
     {
       "question_text": "The question text here",
       "options": ["A) First option", "B) Second option", "C) Third option", "D) Fourth option"],
       "correct_answer": "A",
-      "explanation": "Explanation of why this is the correct answer",
+      "explanation": "Detailed explanation of why this is the correct answer",
       "marks": 2
     }
 
-    Content: ${text.substring(0, 8000)} // Limit content length for API
+    PDF Content: ${text.substring(0, 8000)} // Limiting content length for API
+    
+    Generate questions that:
+    1. Are directly based on the PDF content
+    2. Test different levels of understanding
+    3. Have clear, unambiguous correct answers
+    4. Include detailed explanations
     `
 
     const completion = await openai.createChatCompletion({
       model: "gpt-4o-mini",
       messages: [
-        { role: "system", content: "You are a professional exam question generator. Create clear, concise, and challenging questions." },
+        { 
+          role: "system", 
+          content: "You are an expert exam question generator. Create clear, specific questions that test understanding of the provided content. Questions should be challenging but fair, with unambiguous correct answers." 
+        },
         { role: "user", content: prompt }
       ],
     })
 
+    console.log('[process-pdf] Received response from OpenAI')
+    
     const generatedQuestions = JSON.parse(completion.data.choices[0].message?.content || '[]')
+    console.log('[process-pdf] Parsed questions:', generatedQuestions)
 
     // Create exam with generated questions
+    console.log('[process-pdf] Creating exam...')
     const { data: exam, error: examError } = await supabase
       .from('exams')
       .insert({
@@ -97,10 +121,12 @@ serve(async (req) => {
       .single()
 
     if (examError) {
+      console.error('[process-pdf] Error creating exam:', examError)
       throw examError
     }
 
     // Insert generated questions
+    console.log('[process-pdf] Inserting questions...')
     const { error: questionsError } = await supabase
       .from('questions')
       .insert(
@@ -115,6 +141,7 @@ serve(async (req) => {
       )
 
     if (questionsError) {
+      console.error('[process-pdf] Error inserting questions:', questionsError)
       throw questionsError
     }
 
@@ -127,6 +154,8 @@ serve(async (req) => {
       })
       .eq('id', pdfId)
 
+    console.log('[process-pdf] Processing completed successfully')
+
     return new Response(
       JSON.stringify({ 
         message: 'PDF processed successfully',
@@ -137,7 +166,7 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Error processing PDF:', error)
+    console.error('[process-pdf] Error:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
