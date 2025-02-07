@@ -106,6 +106,7 @@ export type Database = {
           created_at: string
           file_name: string
           id: string
+          processing_error: string | null
           processing_status: string | null
           size: number
           status: string
@@ -120,6 +121,7 @@ export type Database = {
           created_at?: string
           file_name: string
           id?: string
+          processing_error?: string | null
           processing_status?: string | null
           size: number
           status?: string
@@ -134,6 +136,7 @@ export type Database = {
           created_at?: string
           file_name?: string
           id?: string
+          processing_error?: string | null
           processing_status?: string | null
           size?: number
           status?: string

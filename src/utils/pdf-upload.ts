@@ -6,7 +6,7 @@ export const validatePDFFile = (file: File, toast: (props: ToastProps) => void):
   if (file.type !== "application/pdf") {
     toast({
       title: "Invalid file type",
-      children: "Please upload a PDF file",
+      description: "Please upload a PDF file",
       variant: "destructive",
     });
     return false;
@@ -14,7 +14,7 @@ export const validatePDFFile = (file: File, toast: (props: ToastProps) => void):
   if (file.size > 10 * 1024 * 1024) {
     toast({
       title: "File too large",
-      children: "Maximum file size is 10MB",
+      description: "Maximum file size is 10MB",
       variant: "destructive",
     });
     return false;
@@ -30,45 +30,63 @@ export const handlePDFUpload = async (
   if (!user) {
     toast({
       title: "Authentication required",
-      children: "Please sign in to upload PDFs",
+      description: "Please sign in to upload PDFs",
       variant: "destructive",
     });
     return null;
   }
 
   const filename = `${user.id}/${Date.now()}-${file.name}`;
+  console.log("[handlePDFUpload] Uploading file:", filename);
+
   const { error: uploadError, data } = await supabase.storage
     .from("pdfs")
     .upload(filename, file, {
       cacheControl: "3600",
       upsert: false,
       contentType: "application/pdf",
-      duplex: "half",
-      metadata: {
-        size: file.size.toString(),
-        filename: file.name,
-        mimetype: file.type,
-        encoding: "7bit",
-        "content-type": "application/pdf",
-        "content-length": file.size.toString()
-      }
     });
 
   if (uploadError) {
-    handleUploadError(uploadError, toast);
+    console.error("[handlePDFUpload] Upload error:", uploadError);
+    
+    if (uploadError.message.includes("authentication")) {
+      toast({
+        title: "Authentication error",
+        description: "Please sign in again",
+        variant: "destructive",
+      });
+      return null;
+    }
+
+    toast({
+      title: "Upload failed",
+      description: uploadError.message,
+      variant: "destructive",
+    });
     return null;
   }
 
-  const { data: pdfUpload, error: pdfError } = await supabase
+  console.log("[handlePDFUpload] File uploaded successfully, creating database record");
+
+  const { data: pdfUpload, error: dbError } = await supabase
     .from('pdf_uploads')
-    .select('*')
-    .eq('storage_path', filename)
+    .insert({
+      title: file.name,
+      file_name: file.name,
+      storage_path: filename,
+      size: file.size,
+      uploaded_by: user.id,
+      status: 'pending'
+    })
+    .select()
     .single();
 
-  if (pdfError || !pdfUpload) {
+  if (dbError) {
+    console.error("[handlePDFUpload] Database error:", dbError);
     toast({
       title: "Upload error",
-      children: pdfError?.message || "Failed to get PDF record",
+      description: "Failed to save file information",
       variant: "destructive",
     });
     return null;
@@ -76,30 +94,8 @@ export const handlePDFUpload = async (
 
   toast({
     title: "Upload successful",
-    children: "Your PDF has been uploaded and is being processed",
+    description: "Your PDF is being processed",
   });
 
   return pdfUpload.id;
-};
-
-const handleUploadError = (error: Error, toast: (props: ToastProps) => void) => {
-  if (error.message.includes("Bucket not found")) {
-    toast({
-      title: "Storage not configured",
-      children: "Please create a 'pdfs' bucket in your Supabase project",
-      variant: "destructive",
-    });
-  } else if (error.message.includes("row-level security")) {
-    toast({
-      title: "Permission error",
-      children: "You don't have permission to upload files. Please check your authentication.",
-      variant: "destructive",
-    });
-  } else {
-    toast({
-      title: "Upload failed",
-      children: error.message,
-      variant: "destructive",
-    });
-  }
 };

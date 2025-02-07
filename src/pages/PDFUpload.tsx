@@ -42,6 +42,18 @@ export default function PDFUpload({ onUploadComplete }: PDFUploadProps) {
     const maxRetries = 3;
 
     try {
+      // First check if we're authenticated
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Authentication required",
+          description: "Please sign in to upload PDFs",
+          variant: "destructive",
+        });
+        navigate("/signin");
+        return;
+      }
+
       while (retryCount < maxRetries) {
         const pdfId = await handlePDFUpload(file, toast);
         console.log("[PDFUpload] PDF upload complete, pdfId:", pdfId);
@@ -68,11 +80,6 @@ export default function PDFUpload({ onUploadComplete }: PDFUploadProps) {
           } else {
             const path = `/exam/${data.examId}/edit`;
             console.log("[PDFUpload] No onUploadComplete handler, navigating to:", path);
-            console.log("[PDFUpload] Navigation state:", {
-              pdfId,
-              examId: data.examId,
-              fromUpload: true
-            });
             
             navigate(path, {
               state: { 
@@ -87,16 +94,27 @@ export default function PDFUpload({ onUploadComplete }: PDFUploadProps) {
         
         retryCount++;
         if (retryCount < maxRetries) {
+          console.log(`[PDFUpload] Retry attempt ${retryCount + 1} of ${maxRetries}`);
           await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
         }
       }
+
+      if (retryCount === maxRetries) {
+        throw new Error("Maximum retry attempts reached");
+      }
+
     } catch (error: any) {
       console.error("[PDFUpload] Error in handleUpload:", error);
       toast({
-        title: "Error",
+        title: "Upload failed",
         description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
+
+      // Check if the error is due to authentication
+      if (error.message?.includes("auth") || error.message?.includes("authenticated")) {
+        navigate("/signin");
+      }
     } finally {
       setUploading(false);
       setProcessing(false);
