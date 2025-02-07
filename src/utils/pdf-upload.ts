@@ -5,16 +5,14 @@ import type { ToastProps } from "@/components/ui/toast";
 export const validatePDFFile = (file: File, toast: (props: ToastProps) => void): boolean => {
   if (file.type !== "application/pdf") {
     toast({
-      title: "Invalid file type",
-      description: "Please upload a PDF file",
+      title: "Invalid file type. Please upload a PDF file",
       variant: "destructive",
     });
     return false;
   }
   if (file.size > 10 * 1024 * 1024) {
     toast({
-      title: "File too large",
-      description: "Maximum file size is 10MB",
+      title: "File too large. Maximum file size is 10MB",
       variant: "destructive",
     });
     return false;
@@ -29,8 +27,7 @@ export const handlePDFUpload = async (
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     toast({
-      title: "Authentication required",
-      description: "Please sign in to upload PDFs",
+      title: "Authentication required. Please sign in to upload PDFs",
       variant: "destructive",
     });
     return null;
@@ -52,16 +49,14 @@ export const handlePDFUpload = async (
     
     if (uploadError.message.includes("authentication")) {
       toast({
-        title: "Authentication error",
-        description: "Please sign in again",
+        title: "Authentication error. Please sign in again",
         variant: "destructive",
       });
       return null;
     }
 
     toast({
-      title: "Upload failed",
-      description: uploadError.message,
+      title: uploadError.message,
       variant: "destructive",
     });
     return null;
@@ -85,16 +80,14 @@ export const handlePDFUpload = async (
   if (dbError) {
     console.error("[handlePDFUpload] Database error:", dbError);
     toast({
-      title: "Upload error",
-      description: "Failed to save file information",
+      title: "Failed to save file information",
       variant: "destructive",
     });
     return null;
   }
 
   toast({
-    title: "Upload successful",
-    description: "Your PDF is being processed",
+    title: "Your PDF is being processed",
   });
 
   return pdfUpload.id;
