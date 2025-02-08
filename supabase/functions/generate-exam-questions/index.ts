@@ -16,14 +16,25 @@ serve(async (req) => {
 
   try {
     const { pdfId, examId, totalMarks, numberOfQuestions, subject, difficulty } = await req.json()
+    
+    // Validate required parameters
+    if (!pdfId || !examId || !totalMarks || !numberOfQuestions || !subject || !difficulty) {
+      console.error("[generate-exam-questions] Missing required parameters:", { pdfId, examId, totalMarks, numberOfQuestions, subject, difficulty })
+      throw new Error('Missing required parameters')
+    }
+
     console.log("[generate-exam-questions] Starting question generation for PDF:", pdfId)
     console.log("[generate-exam-questions] Parameters:", { totalMarks, numberOfQuestions, subject, difficulty })
     
     // Initialize Supabase client
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing Supabase configuration')
+    }
+
+    const supabaseClient = createClient(supabaseUrl, supabaseKey)
 
     // Get PDF content
     const { data: pdf, error: pdfError } = await supabaseClient
@@ -40,8 +51,13 @@ serve(async (req) => {
     console.log("[generate-exam-questions] PDF content retrieved, length:", pdf.content.length)
 
     // Initialize OpenAI
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
+    if (!openaiApiKey) {
+      throw new Error('OpenAI API key not configured')
+    }
+
     const configuration = new Configuration({
-      apiKey: Deno.env.get('OPENAI_API_KEY'),
+      apiKey: openaiApiKey
     })
     const openai = new OpenAIApi(configuration)
 
@@ -72,7 +88,7 @@ ${pdf.content.substring(0, 8000)} // Limit content length to avoid token limits
 Generate questions that thoroughly test understanding of the main concepts from this text.`
 
     const response = await openai.createChatCompletion({
-      model: "gpt-4o-mini",
+      model: "gpt-4",  // Fixed model name
       messages: [
         {
           role: "system",
