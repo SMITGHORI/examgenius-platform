@@ -15,8 +15,9 @@ serve(async (req) => {
   }
 
   try {
-    const { pdfId, examId, totalMarks } = await req.json()
+    const { pdfId, examId, totalMarks, numberOfQuestions, subject, difficulty } = await req.json()
     console.log("[generate-exam-questions] Starting question generation for PDF:", pdfId)
+    console.log("[generate-exam-questions] Parameters:", { totalMarks, numberOfQuestions, subject, difficulty })
     
     // Initialize Supabase client
     const supabaseClient = createClient(
@@ -44,38 +45,38 @@ serve(async (req) => {
     })
     const openai = new OpenAIApi(configuration)
 
-    // Calculate number of questions based on total marks (assuming 5 marks per question)
-    const numberOfQuestions = Math.ceil(totalMarks / 5)
+    // Calculate marks per question
+    const marksPerQuestion = Math.ceil(totalMarks / numberOfQuestions)
 
-    console.log("[generate-exam-questions] Generating", numberOfQuestions, "questions")
+    console.log("[generate-exam-questions] Generating", numberOfQuestions, "questions with", marksPerQuestion, "marks each")
 
-    const prompt = `Based on the following text from ${pdf.title}, generate ${numberOfQuestions} multiple choice questions.
+    const prompt = `Based on the following text from ${pdf.title}, generate ${numberOfQuestions} multiple choice questions for a ${difficulty} level ${subject} exam.
+
 Each question should:
-- Test understanding of key concepts
+- Test understanding of key concepts from the PDF content
+- Be appropriate for ${difficulty} difficulty level
 - Have 4 options with one correct answer
 - Include a brief explanation for the correct answer
-- Be assigned 5 marks
+- Be assigned ${marksPerQuestion} marks
 
 Format each question as a JSON object with these fields:
 - question_text: the question
 - options: array of 4 strings for answer choices
 - correct_answer: index of correct option (0-3)
 - explanation: brief explanation of correct answer
-- marks: 5
-
-Return an array of these question objects.
+- marks: ${marksPerQuestion}
 
 Text content:
 ${pdf.content.substring(0, 8000)} // Limit content length to avoid token limits
 
-Generate questions that test understanding of the main concepts from this text.`
+Generate questions that thoroughly test understanding of the main concepts from this text.`
 
     const response = await openai.createChatCompletion({
       model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
-          content: "You are an expert at creating educational assessments. Generate clear, accurate multiple choice questions based on the provided content."
+          content: `You are an expert at creating educational assessments for ${subject} at the ${difficulty} difficulty level.`
         },
         {
           role: "user",
@@ -99,7 +100,7 @@ Generate questions that test understanding of the main concepts from this text.`
       question_text: q.question_text,
       options: q.options,
       correct_answer: q.correct_answer.toString(),
-      marks: q.marks || 5,
+      marks: marksPerQuestion,
       explanation: q.explanation,
       exam_id: examId
     }))

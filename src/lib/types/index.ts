@@ -47,6 +47,8 @@ export interface ExamData {
   negative_marks?: number;
   difficulty?: 'easy' | 'medium' | 'hard';
   questions?: ExamQuestion[];
+  numberOfQuestions?: number;
+  marks_per_question?: number;
 }
 
 export interface ExamQuestion extends Question {

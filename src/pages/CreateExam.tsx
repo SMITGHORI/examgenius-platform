@@ -6,9 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import type { CreateExamProps, ExamData } from "@/lib/types";
+import { SUBJECTS, DIFFICULTIES } from "@/lib/constants";
 
 export default function CreateExam({ onConfigComplete, pdfId }: CreateExamProps) {
   const [loading, setLoading] = useState(false);
@@ -18,6 +20,9 @@ export default function CreateExam({ onConfigComplete, pdfId }: CreateExamProps)
     duration: 60,
     total_marks: 100,
     pdf_id: pdfId,
+    subject: "Other",
+    difficulty: "medium",
+    numberOfQuestions: 10,
   });
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -30,7 +35,18 @@ export default function CreateExam({ onConfigComplete, pdfId }: CreateExamProps)
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
-      onConfigComplete(formData);
+      if (!formData.title || !formData.subject || !formData.numberOfQuestions) {
+        throw new Error("Please fill in all required fields");
+      }
+
+      // Calculate marks per question
+      const marksPerQuestion = Math.floor(formData.total_marks / formData.numberOfQuestions);
+      const updatedFormData = {
+        ...formData,
+        marks_per_question: marksPerQuestion,
+      };
+
+      onConfigComplete(updatedFormData);
       
       toast({
         title: "Success",
@@ -58,7 +74,7 @@ export default function CreateExam({ onConfigComplete, pdfId }: CreateExamProps)
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="title">Exam Title</Label>
+              <Label htmlFor="title">Exam Title *</Label>
               <Input
                 id="title"
                 value={formData.title}
@@ -84,16 +100,60 @@ export default function CreateExam({ onConfigComplete, pdfId }: CreateExamProps)
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="duration">Duration (minutes)</Label>
+                <Label htmlFor="subject">Subject *</Label>
+                <Select
+                  value={formData.subject}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, subject: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select subject" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SUBJECTS.map((subject) => (
+                      <SelectItem key={subject} value={subject}>
+                        {subject}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="difficulty">Difficulty Level</Label>
+                <Select
+                  value={formData.difficulty}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, difficulty: value as any })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select difficulty" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DIFFICULTIES.map((level) => (
+                      <SelectItem key={level} value={level}>
+                        {level.charAt(0).toUpperCase() + level.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="numberOfQuestions">Number of Questions *</Label>
                 <Input
-                  id="duration"
+                  id="numberOfQuestions"
                   type="number"
                   min="1"
-                  value={formData.duration}
+                  value={formData.numberOfQuestions}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      duration: parseInt(e.target.value) || 60,
+                      numberOfQuestions: parseInt(e.target.value) || 10,
                     })
                   }
                   required
@@ -101,7 +161,7 @@ export default function CreateExam({ onConfigComplete, pdfId }: CreateExamProps)
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="totalMarks">Total Marks</Label>
+                <Label htmlFor="totalMarks">Total Marks *</Label>
                 <Input
                   id="totalMarks"
                   type="number"
@@ -116,6 +176,23 @@ export default function CreateExam({ onConfigComplete, pdfId }: CreateExamProps)
                   required
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="duration">Duration (minutes) *</Label>
+              <Input
+                id="duration"
+                type="number"
+                min="1"
+                value={formData.duration}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    duration: parseInt(e.target.value) || 60,
+                  })
+                }
+                required
+              />
             </div>
 
             <div className="flex justify-end space-x-4">
