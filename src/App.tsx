@@ -13,7 +13,7 @@ import TakeExam from "@/pages/TakeExam";
 import MyExams from "@/pages/MyExams";
 import Profile from "@/pages/Profile";
 import Results from "@/pages/Results";
-import SignIn from "@/pages/SignIn";
+import SignIn from "@/pages/auth/SignIn";
 import SignUp from "@/pages/SignUp";
 import NotFound from "@/pages/NotFound";
 import PDFUpload from "@/pages/PDFUpload";
@@ -138,3 +138,4 @@ const App = () => (
 );
 
 export default App;
+
