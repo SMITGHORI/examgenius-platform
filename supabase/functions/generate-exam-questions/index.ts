@@ -66,7 +66,8 @@ serve(async (req) => {
 
     console.log("[generate-exam-questions] Generating", numberOfQuestions, "questions with", marksPerQuestion, "marks each")
 
-    const prompt = `Based on the following text from ${pdf.title}, generate ${numberOfQuestions} multiple choice questions for a ${difficulty} level ${subject} exam.
+    try {
+      const prompt = `Based on the following text from ${pdf.title}, generate ${numberOfQuestions} multiple choice questions for a ${difficulty} level ${subject} exam.
 
 Each question should:
 - Test understanding of key concepts from the PDF content
@@ -83,68 +84,101 @@ Format each question as a JSON object with these fields:
 - marks: ${marksPerQuestion}
 
 Text content:
-${pdf.content.substring(0, 3000)} // Reduced content length for GPT-3.5-turbo
+${pdf.content.substring(0, 2000)} // Further reduced content length for token limits
 
 Generate questions that thoroughly test understanding of the main concepts from this text.`
 
-    const response = await openai.createChatCompletion({
-      model: "gpt-3.5-turbo",  // Changed to GPT-3.5-turbo
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert at creating educational assessments for ${subject} at the ${difficulty} difficulty level.`
-        },
-        {
-          role: "user",
-          content: prompt
+      const response = await openai.createChatCompletion({
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "system",
+            content: `You are an expert at creating educational assessments for ${subject} at the ${difficulty} difficulty level. Format your response as a valid JSON array.`
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 1500,
+        presence_penalty: 0.1,
+        frequency_penalty: 0.1,
+      })
+
+      if (!response.data.choices[0]?.message?.content) {
+        console.error("[generate-exam-questions] No content in OpenAI response")
+        throw new Error('Failed to generate questions - no content in response')
+      }
+
+      console.log("[generate-exam-questions] Raw OpenAI response received")
+
+      let generatedQuestions
+      try {
+        generatedQuestions = JSON.parse(response.data.choices[0].message.content)
+        if (!Array.isArray(generatedQuestions)) {
+          throw new Error('Response is not an array')
         }
-      ],
-      temperature: 0.7,
-      max_tokens: 2000,  // Added token limit suitable for GPT-3.5-turbo
-    })
+      } catch (parseError) {
+        console.error("[generate-exam-questions] Failed to parse OpenAI response:", parseError)
+        console.error("[generate-exam-questions] Raw response:", response.data.choices[0].message.content)
+        throw new Error('Failed to parse generated questions')
+      }
 
-    if (!response.data.choices[0]?.message?.content) {
-      throw new Error('Failed to generate questions')
+      console.log("[generate-exam-questions] Successfully parsed questions, count:", generatedQuestions.length)
+
+      // Validate and format questions
+      const questions = generatedQuestions.map((q: any, index: number) => {
+        if (!q.question_text || !Array.isArray(q.options) || q.options.length !== 4 || !q.correct_answer) {
+          console.error("[generate-exam-questions] Invalid question format:", q)
+          throw new Error(`Invalid format for question ${index + 1}`)
+        }
+
+        return {
+          question_text: q.question_text,
+          options: q.options,
+          correct_answer: q.correct_answer.toString(),
+          marks: marksPerQuestion,
+          explanation: q.explanation || 'No explanation provided',
+          exam_id: examId
+        }
+      })
+
+      console.log("[generate-exam-questions] Questions formatted successfully")
+
+      // Save questions to database
+      const { error: saveError } = await supabaseClient
+        .from('questions')
+        .insert(questions)
+
+      if (saveError) {
+        console.error("[generate-exam-questions] Error saving questions:", saveError)
+        throw new Error('Failed to save generated questions')
+      }
+
+      console.log("[generate-exam-questions] Successfully saved questions to database")
+
+      return new Response(
+        JSON.stringify({ success: true, questions }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+
+    } catch (openAiError: any) {
+      console.error("[generate-exam-questions] OpenAI API error:", openAiError)
+      throw new Error(`OpenAI API error: ${openAiError.message || 'Unknown error'}`)
     }
 
-    console.log("[generate-exam-questions] Successfully generated questions from AI")
-
-    // Parse the AI response into questions array
-    const generatedQuestions = JSON.parse(response.data.choices[0].message.content)
-
-    // Validate question format
-    const questions = generatedQuestions.map((q: any) => ({
-      question_text: q.question_text,
-      options: q.options,
-      correct_answer: q.correct_answer.toString(),
-      marks: marksPerQuestion,
-      explanation: q.explanation,
-      exam_id: examId
-    }))
-
-    console.log("[generate-exam-questions] Formatted questions:", questions.length)
-
-    // Save questions to database
-    const { error: saveError } = await supabaseClient
-      .from('questions')
-      .insert(questions)
-
-    if (saveError) {
-      console.error("[generate-exam-questions] Error saving questions:", saveError)
-      throw new Error('Failed to save generated questions')
-    }
-
-    console.log("[generate-exam-questions] Successfully saved questions to database")
-
-    return new Response(
-      JSON.stringify({ questions }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
-  } catch (error) {
+  } catch (error: any) {
     console.error("[generate-exam-questions] Error:", error)
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      JSON.stringify({ 
+        error: error.message || 'An unexpected error occurred',
+        success: false
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500
+      }
     )
   }
 })
