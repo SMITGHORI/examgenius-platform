@@ -1,9 +1,11 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { ROUTES } from "@/lib/constants";
 
 const SignIn = () => {
   const [email, setEmail] = useState("");
@@ -25,17 +27,20 @@ const SignIn = () => {
       if (error) throw error;
 
       if (data?.user) {
+        // Store the session in local storage
+        localStorage.setItem('sb-session', JSON.stringify(data.session));
+        
         toast({
-          title: "Welcome back!",
-          description: "You have successfully signed in.",
+          title: "Welcome back! You have successfully signed in.",
         });
-        navigate("/upload");
+        
+        // Navigate to the upload page using the constant from ROUTES
+        navigate(ROUTES.UPLOAD_PDF);
       }
     } catch (error: any) {
       console.error("Error signing in:", error);
       toast({
-        title: "Error",
-        description: "Invalid email or password",
+        title: "Invalid email or password",
         variant: "destructive",
       });
     } finally {
