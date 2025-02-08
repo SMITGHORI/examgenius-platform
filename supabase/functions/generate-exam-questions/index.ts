@@ -83,12 +83,12 @@ Format each question as a JSON object with these fields:
 - marks: ${marksPerQuestion}
 
 Text content:
-${pdf.content.substring(0, 8000)} // Limit content length to avoid token limits
+${pdf.content.substring(0, 3000)} // Reduced content length for GPT-3.5-turbo
 
 Generate questions that thoroughly test understanding of the main concepts from this text.`
 
     const response = await openai.createChatCompletion({
-      model: "gpt-4",  // Fixed model name
+      model: "gpt-3.5-turbo",  // Changed to GPT-3.5-turbo
       messages: [
         {
           role: "system",
@@ -100,6 +100,7 @@ Generate questions that thoroughly test understanding of the main concepts from 
         }
       ],
       temperature: 0.7,
+      max_tokens: 2000,  // Added token limit suitable for GPT-3.5-turbo
     })
 
     if (!response.data.choices[0]?.message?.content) {
