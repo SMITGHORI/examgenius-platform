@@ -10,12 +10,19 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    const { pdfId, examId, totalMarks, numberOfQuestions, subject, difficulty } = await req.json()
+    console.log("[generate-exam-questions] Starting function")
+    
+    // Parse request body
+    const requestBody = await req.json()
+    console.log("[generate-exam-questions] Request body:", requestBody)
+    
+    const { pdfId, examId, totalMarks, numberOfQuestions, subject, difficulty } = requestBody
     
     // Validate required parameters
     if (!pdfId || !examId || !totalMarks || !numberOfQuestions || !subject || !difficulty) {
@@ -23,28 +30,32 @@ serve(async (req) => {
       throw new Error('Missing required parameters')
     }
 
-    console.log("[generate-exam-questions] Starting question generation for PDF:", pdfId)
-    console.log("[generate-exam-questions] Parameters:", { totalMarks, numberOfQuestions, subject, difficulty })
-    
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
     if (!supabaseUrl || !supabaseKey) {
+      console.error("[generate-exam-questions] Missing Supabase configuration")
       throw new Error('Missing Supabase configuration')
     }
 
     const supabaseClient = createClient(supabaseUrl, supabaseKey)
 
     // Get PDF content
+    console.log("[generate-exam-questions] Fetching PDF content for ID:", pdfId)
     const { data: pdf, error: pdfError } = await supabaseClient
       .from('pdf_uploads')
       .select('content, title')
       .eq('id', pdfId)
-      .single()
+      .maybeSingle()
 
-    if (pdfError || !pdf?.content) {
+    if (pdfError) {
       console.error("[generate-exam-questions] Error fetching PDF:", pdfError)
+      throw new Error(`Error fetching PDF: ${pdfError.message}`)
+    }
+
+    if (!pdf || !pdf.content) {
+      console.error("[generate-exam-questions] PDF content not found")
       throw new Error('PDF content not found')
     }
 
@@ -53,6 +64,7 @@ serve(async (req) => {
     // Initialize OpenAI
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
     if (!openaiApiKey) {
+      console.error("[generate-exam-questions] OpenAI API key not configured")
       throw new Error('OpenAI API key not configured')
     }
 
@@ -66,8 +78,10 @@ serve(async (req) => {
 
     console.log("[generate-exam-questions] Generating", numberOfQuestions, "questions with", marksPerQuestion, "marks each")
 
-    try {
-      const prompt = `Based on the following text from ${pdf.title}, generate ${numberOfQuestions} multiple choice questions for a ${difficulty} level ${subject} exam.
+    // Prepare content for OpenAI prompt
+    const truncatedContent = pdf.content.substring(0, 1500) // Further reduced for token limits
+    
+    const prompt = `Based on the following text from ${pdf.title}, generate ${numberOfQuestions} multiple choice questions for a ${difficulty} level ${subject} exam.
 
 Each question should:
 - Test understanding of key concepts from the PDF content
@@ -84,10 +98,13 @@ Format each question as a JSON object with these fields:
 - marks: ${marksPerQuestion}
 
 Text content:
-${pdf.content.substring(0, 2000)} // Further reduced content length for token limits
+${truncatedContent}
 
 Generate questions that thoroughly test understanding of the main concepts from this text.`
 
+    console.log("[generate-exam-questions] Sending request to OpenAI")
+    
+    try {
       const response = await openai.createChatCompletion({
         model: "gpt-3.5-turbo",
         messages: [
@@ -101,22 +118,23 @@ Generate questions that thoroughly test understanding of the main concepts from 
           }
         ],
         temperature: 0.7,
-        max_tokens: 1500,
+        max_tokens: 1000,
         presence_penalty: 0.1,
         frequency_penalty: 0.1,
       })
+
+      console.log("[generate-exam-questions] OpenAI response received:", response.data)
 
       if (!response.data.choices[0]?.message?.content) {
         console.error("[generate-exam-questions] No content in OpenAI response")
         throw new Error('Failed to generate questions - no content in response')
       }
 
-      console.log("[generate-exam-questions] Raw OpenAI response received")
-
       let generatedQuestions
       try {
         generatedQuestions = JSON.parse(response.data.choices[0].message.content)
         if (!Array.isArray(generatedQuestions)) {
+          console.error("[generate-exam-questions] Response is not an array:", response.data.choices[0].message.content)
           throw new Error('Response is not an array')
         }
       } catch (parseError) {
@@ -129,7 +147,7 @@ Generate questions that thoroughly test understanding of the main concepts from 
 
       // Validate and format questions
       const questions = generatedQuestions.map((q: any, index: number) => {
-        if (!q.question_text || !Array.isArray(q.options) || q.options.length !== 4 || !q.correct_answer) {
+        if (!q.question_text || !Array.isArray(q.options) || q.options.length !== 4 || typeof q.correct_answer !== 'number') {
           console.error("[generate-exam-questions] Invalid question format:", q)
           throw new Error(`Invalid format for question ${index + 1}`)
         }
@@ -137,7 +155,7 @@ Generate questions that thoroughly test understanding of the main concepts from 
         return {
           question_text: q.question_text,
           options: q.options,
-          correct_answer: q.correct_answer.toString(),
+          correct_answer: q.correct_answer,
           marks: marksPerQuestion,
           explanation: q.explanation || 'No explanation provided',
           exam_id: examId
@@ -165,6 +183,9 @@ Generate questions that thoroughly test understanding of the main concepts from 
 
     } catch (openAiError: any) {
       console.error("[generate-exam-questions] OpenAI API error:", openAiError)
+      if (openAiError.response) {
+        console.error("[generate-exam-questions] OpenAI error response:", openAiError.response.data)
+      }
       throw new Error(`OpenAI API error: ${openAiError.message || 'Unknown error'}`)
     }
 

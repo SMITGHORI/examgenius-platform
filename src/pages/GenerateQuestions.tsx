@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -36,13 +35,23 @@ const GenerateQuestions = ({ examData, pdfId, onQuestionsGenerated }: Props) => 
         throw new Error("You must be logged in to generate questions");
       }
 
-      console.log("[GenerateQuestions] Calling generate-exam-questions function");
+      console.log("[GenerateQuestions] Calling generate-exam-questions function with data:", {
+        pdfId,
+        examId: examData.id,
+        totalMarks: examData.total_marks,
+        numberOfQuestions: 5, // Added default value
+        subject: examData.subject,
+        difficulty: "medium" // Added default value
+      });
+
       const { data, error } = await supabase.functions.invoke('generate-exam-questions', {
         body: { 
           pdfId,
           examId: examData.id,
           totalMarks: examData.total_marks,
-          subject: examData.subject
+          numberOfQuestions: 5, // Added default value
+          subject: examData.subject,
+          difficulty: "medium" // Added default value
         }
       });
 
@@ -63,7 +72,7 @@ const GenerateQuestions = ({ examData, pdfId, onQuestionsGenerated }: Props) => 
         exam_id: examData.id,
         question_text: q.question_text,
         options: q.options,
-        correct_answer: q.correct_answer,
+        correct_answer: q.correct_answer.toString(),
         marks: q.marks || Math.ceil(examData.total_marks / data.questions.length),
         explanation: q.explanation || null,
         page_number: q.page_number || null,
@@ -72,35 +81,17 @@ const GenerateQuestions = ({ examData, pdfId, onQuestionsGenerated }: Props) => 
       }));
 
       setGeneratedQuestions(questions);
+      onQuestionsGenerated(questions);
       
-      console.log("[GenerateQuestions] Saving questions to database");
-      const { error: saveError } = await supabase.from("questions").insert(
-        questions.map(q => ({
-          exam_id: examData.id,
-          question_text: q.question_text,
-          options: q.options,
-          correct_answer: q.correct_answer,
-          marks: q.marks,
-          explanation: q.explanation,
-          page_number: q.page_number
-        }))
-      );
-
-      if (saveError) {
-        console.error("[GenerateQuestions] Database save error:", saveError);
-        throw saveError;
-      }
-
       toast({
         title: "Success",
         description: "Questions generated successfully!",
       });
 
-      onQuestionsGenerated(questions);
     } catch (error: any) {
       console.error("[GenerateQuestions] Error:", error);
       toast({
-        title: "Error",
+        title: "Error generating questions",
         description: error.message || "Failed to generate questions. Please try again.",
         variant: "destructive",
       });
